@@ -101,3 +101,11 @@ class AnomalyDetector:
         anomalies = AnomalyDetector.detect_anomalies(distances, threshold)
         transformed_distances[anomalies] = 1
         return transformed_distances
+
+    @staticmethod
+    def transform_labels(labels):
+        unique_labels, counts = np.unique(labels, return_counts=True)
+        most_populous_label = unique_labels[np.argmax(counts)]
+        transformed_labels = np.where(labels != most_populous_label, 1, 0)
+
+        return transformed_labels
