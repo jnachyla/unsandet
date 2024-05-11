@@ -94,3 +94,10 @@ class AnomalyDetector:
         threshold_value = np.quantile(distances, threshold)
         anomalies = np.where(distances > threshold_value)[0]
         return anomalies
+
+    @staticmethod
+    def transform_distances(distances, threshold=0.95):
+        transformed_distances = np.zeros_like(distances)
+        anomalies = AnomalyDetector.detect_anomalies(distances, threshold)
+        transformed_distances[anomalies] = 1
+        return transformed_distances
