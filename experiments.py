@@ -1,9 +1,11 @@
+import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score, recall_score, precision_score
 
 import data_prep
 from ad_one_class import OneClassAnnomalyDetector
-from anomaly_detector import AnnomalyDetector
+from anomaly_detector import AnomalyDetector
+from metrics import AnomalyDetectorEvaluator
 
 
 class Experiments:
@@ -57,14 +59,15 @@ class Experiments:
         print("Results: HTTP one class SVM")
         self.print_metrics(ytest, ypred_svm)
     def run_http_kmeans(self):
-        Xtrain, ytrain, Xtest, ytest = data_prep.split_binary_dataset(self.http_dataset[0], self.http_dataset[1])
+        X = self.http_dataset[0]
+        y = np.ravel(self.http_dataset[1])
 
         kmeans = AnomalyDetector(model="kmeans", n_clusters=2)
-        labels_shuttle_kmeans, distances_shuttle_kmeans = kmeans.fit_predict(data=Xtrain)
+        labels_shuttle_kmeans, distances_shuttle_kmeans = kmeans.fit_predict(data=X)
         labels_shuttle_kmeans = AnomalyDetector.transform_labels(labels_shuttle_kmeans)
         distances_shuttle_kmeans = AnomalyDetector.transform_distances(distances_shuttle_kmeans)
-        from metrics import AnomalyDetectorEvaluator
-        evaluator_shuttle_kmeans = AnomalyDetectorEvaluator( ytest,labels_shuttle_kmeans)
+
+        evaluator_shuttle_kmeans = AnomalyDetectorEvaluator( y,labels_shuttle_kmeans,distances_shuttle_kmeans)
         accuracy_shuttle_kmeans = evaluator_shuttle_kmeans.calculate_accuracy()
         recall_shuttle_kmeans = evaluator_shuttle_kmeans.calculate_recall()
         precision_shuttle_kmeans = evaluator_shuttle_kmeans.calculate_precision()
