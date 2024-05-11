@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 from scipy.spatial.distance import cdist, mahalanobis
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
@@ -12,7 +14,7 @@ class AnomalyDetector:
         self,
         model: str = "kmeans",
         metric: str = "euclidean",
-        n_clusters: int | None = None,
+        n_clusters: Optional[int] = None,
     ) -> None:
         if model not in ["kmeans", "dbscan", "agglomerative"]:
             raise ValueError("Unknown model.")

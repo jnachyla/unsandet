@@ -3,6 +3,7 @@ from sklearn.metrics import accuracy_score, recall_score, precision_score
 
 import data_prep
 from ad_one_class import OneClassAnnomalyDetector
+from anomaly_detector import AnnomalyDetector
 
 
 class Experiments:
@@ -27,7 +28,12 @@ class Experiments:
         return (X,y)
 
 
-    def run_http(self):
+    def run_http_one_class(self):
+        """
+        Run one class anomaly detection on the http dataset.
+        TODO: jedna metoda run i przyjmuje model jako argument, X,y jako argument, zwraca wyniki
+        :return:
+        """
         Xtrain, ytrain, Xtest, ytest = data_prep.split_binary_dataset(self.http_dataset[0], self.http_dataset[1])
 
         #fit isolation forest
@@ -50,6 +56,27 @@ class Experiments:
 
         print("Results: HTTP one class SVM")
         self.print_metrics(ytest, ypred_svm)
+    def run_http_kmeans(self):
+        Xtrain, ytrain, Xtest, ytest = data_prep.split_binary_dataset(self.http_dataset[0], self.http_dataset[1])
+
+        kmeans = AnomalyDetector(model="kmeans", n_clusters=2)
+        labels_shuttle_kmeans, distances_shuttle_kmeans = kmeans.fit_predict(data=Xtrain)
+        labels_shuttle_kmeans = AnomalyDetector.transform_labels(labels_shuttle_kmeans)
+        distances_shuttle_kmeans = AnomalyDetector.transform_distances(distances_shuttle_kmeans)
+        from metrics import AnomalyDetectorEvaluator
+        evaluator_shuttle_kmeans = AnomalyDetectorEvaluator( ytest,labels_shuttle_kmeans)
+        accuracy_shuttle_kmeans = evaluator_shuttle_kmeans.calculate_accuracy()
+        recall_shuttle_kmeans = evaluator_shuttle_kmeans.calculate_recall()
+        precision_shuttle_kmeans = evaluator_shuttle_kmeans.calculate_precision()
+        auc_pr_shuttle_kmeans = evaluator_shuttle_kmeans.calculate_auc_pr()
+
+        print("Results: HTTP one class KMeans")
+        print("Accuracy: ", accuracy_shuttle_kmeans)
+        print("Recall: ", recall_shuttle_kmeans)
+        print("Precision: ", precision_shuttle_kmeans)
+        print("AUC PR: ", auc_pr_shuttle_kmeans)
+        print("Results: HTTP one class KMeans")
+
 
     def print_metrics(self, Ytest, ypred):
         print(ypred)
