@@ -1,6 +1,7 @@
 from unittest import TestCase
 
 import numpy as np
+from matplotlib import pyplot as plt
 
 from ad_one_class import OneClassAnnomalyDetector
 from data_prep import split_binary_dataset
@@ -15,17 +16,24 @@ class TestOneClassAnnomalyDetector(TestCase):
         np.random.seed(42)
 
         # Generate inlier data
-        centers = [[0, 0], [5, 5]]  # Centers of the clusters for inliers
-        cluster_std = [0.5, 0.5]  # Standard deviation of the clusters
-        X_inliers, _ = make_blobs(n_samples=1000, centers=centers, cluster_std=cluster_std)
+        centers = [[10.0, 10.0, 10.0]]
+        cluster_std = [0.5]
+        X_inliers, _ = make_blobs(n_features=2,n_samples=1000, centers=centers, cluster_std=cluster_std)
 
         # Generate outlier data
-        outlier_center = [2.5, 2.5]  # Not necessarily the center but spread range
-        X_outliers = np.random.uniform(low=-2, high=8, size=(100, 2))
+        outlier_center = [[2.5, 2.5, 2.5]]
+        X_outliers, _ = make_blobs(n_features=2,n_samples=100, centers=outlier_center, cluster_std=cluster_std)
 
         # Combine the datasets
         X = np.vstack([X_inliers, X_outliers])
         y = np.hstack([np.zeros(len(X_inliers)), np.ones(len(X_outliers))])  # 0 for inliers, 1 for outliers
+
+        # Visualize the data inliers and outliers which has features
+        plt.scatter(X_inliers[:, 0], X_inliers[:, 1], label="inliers")
+        plt.scatter(X_outliers[:, 0], X_outliers[:, 1], label="outliers")
+        plt.legend()
+        plt.show()
+
         return X, y
     def test_svm(self):
         X, y = self.create_dataset()
