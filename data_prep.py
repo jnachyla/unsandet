@@ -9,6 +9,7 @@ def sample_indices(array : ndarray,n: int) -> ndarray:
 
 def split_binary_dataset(X,y):
 
+    y = np.ravel(y)
     # Create a mask for Y=1 and Y=0
     mask_Y1 = y == 1
     mask_Y0 = y == 0
