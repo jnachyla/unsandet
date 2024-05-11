@@ -2,6 +2,7 @@ from unittest import TestCase
 
 import numpy as np
 from matplotlib import pyplot as plt
+from sklearn.metrics import accuracy_score, recall_score, precision_score
 
 from ad_one_class import OneClassAnnomalyDetector
 from data_prep import split_binary_dataset
@@ -46,7 +47,8 @@ class TestOneClassAnnomalyDetector(TestCase):
 
         #assert no errors
         ypred = model.predict(Xtest)
-        print(ypred)
+
+        self.print_metrics(Ytest, ypred)
 
 
 
@@ -61,5 +63,21 @@ class TestOneClassAnnomalyDetector(TestCase):
 
         #assert no errors
         ypred = model.predict(Xtest)
+        self.print_metrics(Ytest, ypred)
+
+    def print_metrics(self, Ytest, ypred):
         print(ypred)
+        # show fraction of outliers
+        print("Outliers predicted fraction:")
+        print(sum(ypred) / len(ypred))
+        print("Metrics")
+        # compute accuracy and recall precision using sklearn metrics with printed names
+        print("Accuracy")
+        print(accuracy_score(Ytest, ypred))
+        print("Recall")
+        print(recall_score(Ytest, ypred))
+        print("Precision")
+        print(precision_score(Ytest, ypred))
+
+
 

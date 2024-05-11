@@ -1,3 +1,4 @@
+import numpy as np
 from sklearn.svm import OneClassSVM
 from sklearn.ensemble import IsolationForest
 
@@ -17,5 +18,4 @@ class OneClassAnnomalyDetector:
 
     def predict(self, Xtest):
         ypred = self.model.predict(Xtest)
-
-        return ypred
+        return np.where(ypred == -1, 1, 0)
