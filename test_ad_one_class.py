@@ -19,11 +19,11 @@ class TestOneClassAnnomalyDetector(TestCase):
         # Generate inlier data
         centers = [[10.0, 10.0, 10.0]]
         cluster_std = [0.5]
-        X_inliers, _ = make_blobs(n_features=2,n_samples=1000, centers=centers, cluster_std=cluster_std)
+        X_inliers, _ = make_blobs(n_features=3,n_samples=1000, centers=centers, cluster_std=cluster_std)
 
         # Generate outlier data
         outlier_center = [[2.5, 2.5, 2.5]]
-        X_outliers, _ = make_blobs(n_features=2,n_samples=100, centers=outlier_center, cluster_std=cluster_std)
+        X_outliers, _ = make_blobs(n_features=3,n_samples=100, centers=outlier_center, cluster_std=cluster_std)
 
         # Combine the datasets
         X = np.vstack([X_inliers, X_outliers])
