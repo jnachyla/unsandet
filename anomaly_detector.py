@@ -23,39 +23,53 @@ class AnomalyDetector:
         if n_clusters is not None and model == "dbscan":
             raise ValueError("DBSCAN does not use n_clusters as a parameter!")
 
-        self.model = model
+        self.model_name = model
         self.metric = metric
         self.scaler = StandardScaler()
         self.n_clusters = n_clusters
 
+    def fit(self, data):
+        data_scaled = self.scaler.fit_transform(data)
+
+        if self.model_name == "kmeans":
+            self.model = KMeans(n_clusters=self.n_clusters)
+            self.model.fit(data_scaled)
+            self.centers = self.model.cluster_centers_
+        elif self.model_name == "dbscan":
+            self.model = DBSCAN(metric=self.metric)
+            self.model.fit(data_scaled)
+            self.centers = None
+        elif self.model_name == "agglomerative":
+            self.model = AgglomerativeClustering(n_clusters=self.n_clusters, distance_threshold=None, connectivity=None)
+            self.model.fit(data_scaled)
+            self.centers = np.array(
+                [data_scaled[self.model.labels_ == i].mean(axis=0) for i in range(max(self.model.labels_) + 1)]
+            )
+
     def fit_predict(self, data):
         data_scaled = self.scaler.fit_transform(data)
 
-        if self.model == "kmeans":
-            model = KMeans(n_clusters=self.n_clusters)
-            labels = model.fit_predict(data_scaled)
-            centers = model.cluster_centers_
-        if self.model == "dbscan":
-            model = DBSCAN(metric=self.metric)
-            labels = model.fit_predict(data_scaled)
+        if self.model_name == "kmeans":
+            self.model = KMeans(n_clusters=self.n_clusters)
+            labels = self.model.fit_predict(data_scaled)
+            centers = self.model.cluster_centers_
+        if self.model_name == "dbscan":
+            self.model = DBSCAN(metric=self.metric)
+            labels = self.model.fit_predict(data_scaled)
             centers = None
-        if self.model == "agglomerative":
-            model = AgglomerativeClustering(
-                n_clusters=self.n_clusters, distance_threshold=None, connectivity=None
-            )
-            labels = model.fit_predict(data_scaled)
-            centers = np.array(
-                [data_scaled[labels == i].mean(axis=0) for i in range(max(labels) + 1)]
-            )
+        if self.model_name == "agglomerative":
+            self.model = AgglomerativeClustering(n_clusters=self.n_clusters, distance_threshold=None, connectivity=None)
+            labels = self.model.fit_predict(data_scaled)
+            centers = np.array([data_scaled[labels == i].mean(axis=0) for i in range(max(labels) + 1)])
 
         if centers is not None:
-            distances = self.compute_distances(data_scaled, centers)
+            distances = self._compute_distances(data_scaled, centers)
         else:
-            distances = self.handle_dbscan_distances(data_scaled, labels)
+            distances = self._handle_dbscan_distances(data_scaled, labels)
 
         return labels, distances
 
-    def handle_dbscan_distances(self, data: np.ndarray, labels):
+    def _handle_dbscan_distances(self, data: np.ndarray, labels):
         noise_indexes = labels == -1
         distances = np.zeros(data.shape[0])
         distances[noise_indexes] == np.inf
@@ -65,29 +79,23 @@ class AnomalyDetector:
             cluster_points = data[cluster_indexes]
             nn = NearestNeighbors(n_neighbors=2)
             nn.fit(cluster_points)
-            distances_cluster = nn.kneighbors(
-                cluster_points, n_neighbors=2, return_distance=True
-            )[0][:, 1]
+            distances_cluster = nn.kneighbors(cluster_points, n_neighbors=2, return_distance=True)[0][:, 1]
             distances[cluster_indexes] = distances_cluster
 
         return distances
 
-    def compute_distances(self, data, centers):
+    def _compute_distances(self, data, centers):
         if self.metric == "mahalanobis":
             covariance_matrix = EmpiricalCovariance().fit(data).covariance_
             inv_covariance_matrix = np.linalg.inv(covariance_matrix)
             distances = [
                 mahalanobis(x, centers[cluster], inv_covariance_matrix)
-                for x, cluster in zip(
-                    data, np.argmin(cdist(data, centers, "mahalanobis"), axis=1)
-                )
+                for x, cluster in zip(data, np.argmin(cdist(data, centers, "mahalanobis"), axis=1))
             ]
         if self.metric == "cityblock":
             distances = np.min(cdist(data, centers, metric="cityblock"), axis=1)
         if self.metric == "euclidean":
-            distances = np.min(
-                pairwise_distances(data, centers, metric="euclidean"), axis=1
-            )
+            distances = np.min(pairwise_distances(data, centers, metric="euclidean"), axis=1)
 
         return distances
 

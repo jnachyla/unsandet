@@ -33,6 +33,12 @@ class AnomalyDetectorEvaluator:
         self.accuracy = accuracy_score(self.true_labels, self.pred_labels)
         return self.accuracy
 
+    def calculate_outliers_accuracy(self):
+        self.outliers_accuracy = accuracy_score(
+            self.true_labels[self.true_labels == 1], self.pred_labels[self.true_labels == 1]
+        )
+        return self.outliers_accuracy
+
     def calculate_precision(self):
         self.precision = precision_score(self.true_labels, self.pred_labels)
         return self.precision
