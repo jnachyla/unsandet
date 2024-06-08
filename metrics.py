@@ -1,10 +1,11 @@
 import numpy as np
+import pandas as pd
 from sklearn.metrics import (
     auc,
     precision_recall_curve,
     precision_score,
     recall_score,
-    accuracy_score,
+    accuracy_score, confusion_matrix,
 )
 from warnings import warn
 
@@ -50,3 +51,46 @@ class AnomalyDetectorEvaluator:
         precision, recall = self.calculate_pr_curve()
         self.auc_pr = auc(recall, precision)
         return self.auc_pr
+
+    def imbalanced_metrics(self):
+        # Obliczanie macierzy konfuzji
+        tn, fp, fn, tp = confusion_matrix(self.true_labels, self.pred_labels).ravel()
+
+        # Obliczanie metryk
+        positive_recall = tp / (tp + fn) if (tp + fn) != 0 else 0
+        negative_recall = tn / (tn + fp) if (tn + fp) != 0 else 0
+        positive_precision = tp / (tp + fp) if (tp + fp) != 0 else 0
+        negative_precision = tn / (tn + fn) if (tn + fn) != 0 else 0
+
+        # Obliczanie procentowej macierzy konfuzji
+        total = tn + fp + fn + tp
+        tp_percentage = tp / total
+        fp_percentage = fp / total
+        fn_percentage = fn / total
+        tn_percentage = tn / total
+
+        # Tworzenie DataFrame z procentową macierzą konfuzji
+        data_percentage = {
+            '': ['Positive Class', 'Negative Class'],
+            'Positive Prediction': [f'True Positive (TP) {tp_percentage:.2%}',
+                                    f'False Positive (FP) {fp_percentage:.2%}'],
+            'Negative Prediction': [f'False Negative (FN) {fn_percentage:.2%}',
+                                    f'True Negative (TN) {tn_percentage:.2%}']
+        }
+
+        df_percentage = pd.DataFrame(data_percentage)
+
+        # Tworzenie DataFrame z metrykami procentowymi
+        metrics_data = {
+            'Metric': ['Positive Recall', 'Negative Recall', 'Positive Precision', 'Negative Precision'],
+            'Value': [
+                f'{positive_recall:.2%}',
+                f'{negative_recall:.2%}',
+                f'{positive_precision:.2%}',
+                f'{negative_precision:.2%}'
+            ]
+        }
+
+        df_metrics = pd.DataFrame(metrics_data)
+
+        return df_percentage,df_metrics
