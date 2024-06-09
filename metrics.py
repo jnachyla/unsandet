@@ -100,3 +100,24 @@ class AnomalyDetectorEvaluator:
         df_metrics = pd.DataFrame(metrics_data)
 
         return df_percentage,df_metrics
+
+    def calculate_all_metrics(self):
+        metrics = {}
+
+        metrics['accuracy'] = self.calculate_accuracy()
+        metrics['outliers_accuracy'] = self.calculate_outliers_accuracy()
+        metrics['precision'] = self.calculate_precision()
+        metrics['recall'] = self.calculate_recall()
+
+        if self.scores is not None:
+            metrics['precision_recall_curve'] = self.calculate_pr_curve()
+            metrics['auc_pr'] = self.calculate_auc_pr()
+        else:
+            metrics['precision_recall_curve'] = None
+            metrics['auc_pr'] = None
+
+        confusion_matrix_percentage_df, metrics_df = self.imbalanced_metrics()
+        metrics['confusion_matrix_percentage'] = confusion_matrix_percentage_df
+        metrics['imbalanced_metrics'] = metrics_df
+
+        return metrics
