@@ -48,7 +48,6 @@ class TestOneClassAnnomalyDetector(TestCase):
         #assert no errors
         ypred = model.predict(Xtest)
 
-        self.print_metrics(Ytest, ypred)
 
 
 
@@ -63,21 +62,8 @@ class TestOneClassAnnomalyDetector(TestCase):
 
         #assert no errors
         ypred = model.predict(Xtest)
-        self.print_metrics(Ytest, ypred)
 
-    def print_metrics(self, Ytest, ypred):
-        print(ypred)
-        # show fraction of outliers
-        print("Outliers predicted fraction:")
-        print(sum(ypred) / len(ypred))
-        print("Metrics")
-        # compute accuracy and recall precision using sklearn metrics with printed names
-        print("Accuracy")
-        print(accuracy_score(Ytest, ypred))
-        print("Recall")
-        print(recall_score(Ytest, ypred))
-        print("Precision")
-        print(precision_score(Ytest, ypred))
+
 
 
 
