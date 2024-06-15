@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 import data_prep
+from ad_meta_cost import MetaCost
 from ad_one_class import OneClassAnnomalyDetector
 from anomaly_detector import AnomalyDetector
 from metrics import AnomalyDetectorEvaluator
@@ -84,7 +85,25 @@ class Experiments:
 
         print(evaluator.calculate_all_metrics())
 
+    def run_http_kmeans_metacost(self):
+        X = self.http_dataset[0]
+        y = np.ravel(self.http_dataset[1])
+
+
+        kmeans = AnomalyDetector(model="kmeans", n_clusters=2)
+        cost_matrix = np.array([[0, 1], [1, 0]])
+
+        meta_cost = MetaCost(base_detector=kmeans, cost_matrix=cost_matrix, m=3, n=1000)
+        y_predicted = meta_cost.fit_predict(X)
+
+
+        labels_kmeans = AnomalyDetector.transform_labels(y_predicted)
+
+        evaluator = AnomalyDetectorEvaluator(y, labels_kmeans, None)
+
+        print(evaluator.calculate_all_metrics())
+
 exps = Experiments()
-exps.run_http_kmeans()
+exps.run_http_kmeans_metacost()
 
 

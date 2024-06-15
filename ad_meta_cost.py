@@ -1,28 +1,34 @@
 from typing import Optional
-import numpy as np
+
+import tqdm
 from scipy.spatial.distance import cdist, mahalanobis
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
 from sklearn.covariance import EmpiricalCovariance
-from sklearn.metrics import pairwise_distances
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import resample
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score
+import numpy as np
+from sklearn.metrics import pairwise_distances, pairwise_distances_argmin_min
 
 class AnomalyDetector:
     def __init__(
             self,
-            model: str = "kmeans",
+            model_name: str = "kmeans",
             metric: str = "euclidean",
             n_clusters: Optional[int] = None,
     ) -> None:
-        if model not in ["kmeans", "dbscan", "agglomerative"]:
+        if model_name not in ["kmeans", "dbscan", "agglomerative"]:
             raise ValueError("Unknown model.")
         if metric not in ["euclidean", "cityblock", "mahalanobis"]:
             raise ValueError("Unknown metric.")
-        if n_clusters is not None and model == "dbscan":
+        if n_clusters is not None and model_name == "dbscan":
             raise ValueError("DBSCAN does not use n_clusters as a parameter!")
 
-        self.model_name = model
+        self.model_name = model_name
         self.metric = metric
         self.scaler = StandardScaler()
         self.n_clusters = n_clusters
@@ -45,8 +51,29 @@ class AnomalyDetector:
                 [data_scaled[self.model.labels_ == i].mean(axis=0) for i in range(max(self.model.labels_) + 1)]
             )
 
+    def predict(self, data):
+        """
+        Przewiduje punkty najbliższe do centrów klastrów dla KMeans.
+        Dla DBSCAN i Agglomerative Clustering zwraca pustą macierz.
+
+        Parametry:
+        data: np.ndarray
+            Zbiór danych do przewidywania.
+
+        Zwraca:
+        np.ndarray: Indeksy najbliższych punktów do centrów klastrów (dla KMeans) lub pusta macierz.
+        """
+        data_scaled = self.scaler.transform(data)
+
+        if self.model_name == "kmeans":
+            closest, _ = pairwise_distances_argmin_min(data_scaled, self.model.cluster_centers_)
+            return closest
+        elif self.model_name in ["dbscan", "agglomerative"]:
+            return np.array([])  # Brak implementacji dla DBSCAN i Agglomerative Clustering
+
     def fit_predict(self, data):
-        data_scaled = self.scaler.fit_transform(data)
+        transform = self.scale_features(data)
+        data_scaled = transform
 
         if self.model_name == "kmeans":
             self.model = KMeans(n_clusters=self.n_clusters)
@@ -67,6 +94,9 @@ class AnomalyDetector:
             distances = self._handle_dbscan_distances(data_scaled, labels)
 
         return labels, distances
+
+    def scale_features(self, data):
+        return self.scaler.fit_transform(data)
 
     def _handle_dbscan_distances(self, data: np.ndarray, labels):
         noise_indexes = labels == -1
@@ -120,16 +150,28 @@ class AnomalyDetector:
         return transformed_labels
 
 
-class MetaCost:
-    def __init__(self, base_detector: AnomalyDetector, cost_matrix: np.ndarray, m: int, n: int, p: bool = False, q: bool = True):
-        """
-        Inicjalizuje instancję klasy dla algorytmu MetaCost dla algorytmów grupowania.
+def validate_rf(X, y):
+    # test classication on rf
+    model = RandomForestClassifier()
+    model.fit(X, y)
+    y_pred = model.predict(X)
+    precision = precision_score(y, y_pred)
+    recall = recall_score(y, y_pred)
+    f1 = f1_score(y, y_pred)
+    accuracy = accuracy_score(y, y_pred)
+    print(f"RF - Precision: {precision:.2f}")
+    print(f"RF - Recall: {recall:.2f}")
+    print(f"RF - F1 Score: {f1:.2f}")
 
-        Implementacja w oparciu o:  https://homes.cs.washington.edu/~pedrod/papers/kdd99.pdf
+
+class MetaCost:
+    def __init__(self, base_detector, cost_matrix, m, n, p=False, q=True):
+        """
+        Inicjalizuje instancję klasy MetaCost.
 
         Parametry:
-        base_detector: AnomalyDetector
-            Obiekt klasy AnomalyDetector, który będzie używany jako podstawowy model detekcji anomalii.
+        base_detector: KMeans
+            Obiekt klasy KMeans, który będzie używany jako podstawowy model detekcji anomalii.
         cost_matrix: np.ndarray
             Macierz kosztów, która określa koszty błędnej klasyfikacji między różnymi klasami.
         m: int
@@ -169,7 +211,6 @@ class MetaCost:
         Let M = Model produced by applying L to S.
         Return M.
         """
-
         self.base_detector = base_detector
         self.cost_matrix = cost_matrix
         self.m = m
@@ -177,8 +218,7 @@ class MetaCost:
         self.p = p
         self.q = q
 
-
-    def fit_predict(self, data):
+    def fit_predict(self, data, labels):
         """
         Trenuje model MetaCost na danych i zwraca przypisania do klas.
 
@@ -194,28 +234,34 @@ class MetaCost:
             Let Si be a resample of S with n examples.
             Let Mi = Model produced by applying L to Si.
         """
-        self.base_detector.fit(data)
         self.models = []
         self.samples = []
 
         for _ in range(self.m):
-            sample = resample(data, n_samples=self.n)
-            model = AnomalyDetector(model=self.base_detector.model_name, metric=self.base_detector.metric,
-                                    n_clusters=self.base_detector.n_clusters)
-            model.fit(sample)
+            X_sampled, y_sampled = self.startified_resample(data, labels, self.n)
+
+            model = AnomalyDetector(n_clusters=self.base_detector.n_clusters, metric=self.base_detector.metric, model_name="kmeans")
+            model.fit_predict(X_sampled)
+
             self.models.append(model)
-            self.samples.append(sample)
+            self.samples.append(X_sampled)
 
         probabilities = self._calculate_probabilities(data)
         assigned_clusters = self._assign_clusters(data, probabilities)
 
-        final_model = AnomalyDetector(model=self.base_detector.model_name, metric=self.base_detector.metric,
-                                      n_clusters=self.base_detector.n_clusters)
+        final_model = KMeans(n_clusters=self.base_detector.n_clusters)
         final_model.fit(data)
-        final_model.model.fit(data, assigned_clusters)
+        final_model.fit(data, assigned_clusters)
 
         return assigned_clusters
 
+    def startified_resample(self, X, y, n):
+
+        resampled_size = n/X.shape[0]
+        X_train, X_test, y_train, y_test = train_test_split(X, y,stratify=y,test_size=resampled_size)
+        # print("Stratified resampling in MetaCost outliers to inliers")
+        # print(np.bincount(y_test))
+        return X_test, y_test
 
     def _calculate_probabilities(self, data):
         """
@@ -246,17 +292,13 @@ class MetaCost:
                                                                       x not in self.samples[i]]
             for i in relevant_models:
                 model = self.models[i]
-                if self.p:
-                    probabilities[j] += model.model.predict_proba([x])[0]
-                else:
-                    labels = model.model.predict([x])
-                    probabilities[j, labels[0]] += 1
+                labels = model.predict([x])
+                probabilities[j, labels[0]] += 1
 
         for i in range(n_samples):
             probabilities[i] /= np.sum(probabilities[i])
 
         return probabilities
-
 
     def _assign_clusters(self, data, probabilities):
         """
@@ -282,3 +324,175 @@ class MetaCost:
             assigned_clusters[i] = np.argmin(cost)
 
         return assigned_clusters
+
+
+def generate_fixed_interval_cost_matrix(n_classes):
+    """
+    Generuje macierz kosztów dla modelu Fixed-Interval Cost.
+
+    Parametry:
+    n_classes: int
+        Liczba klas.
+
+    Zwraca:
+    np.ndarray: Macierz kosztów o wymiarach (n_classes, n_classes).
+    """
+    C = np.zeros((n_classes, n_classes))
+    for i in range(n_classes):
+        C[i, i] = np.random.uniform(0, 1000)
+        for j in range(n_classes):
+            if i != j:
+                C[i, j] = np.random.uniform(0, 10000)
+    return C
+
+
+def generate_probability_dependent_cost_matrix(n_classes, class_probabilities):
+    """
+    Generuje macierz kosztów dla modelu Probability-Dependent Cost.
+
+    Parametry:
+    n_classes: int
+        Liczba klas.
+    class_probabilities: np.ndarray
+        Prawdopodobieństwa wystąpienia każdej klasy w zbiorze treningowym.
+
+    Zwraca:
+    np.ndarray: Macierz kosztów o wymiarach (n_classes, n_classes).
+    """
+    C = np.zeros((n_classes, n_classes))
+    for i in range(n_classes):
+        C[i, i] = np.random.uniform(0, 1000)
+        for j in range(n_classes):
+            if i != j:
+                C[i, j] = np.random.uniform(0, 2000 * class_probabilities[i] / class_probabilities[j])
+    return C
+
+
+def evaluate_model(X,y, cost_matrix_generator = "fixed_interval", N=3):
+    """
+    Ocena modelu MetaCost na zbiorze treningowym i testowym.
+
+    Parametry:
+    X_train: np.ndarray
+        Zbiór danych treningowych.
+    X_test: np.ndarray
+        Zbiór danych testowych.
+    y_train: np.ndarray
+        Etykiety danych treningowych.
+    y_test: np.ndarray
+        Etykiety danych testowych.
+    cost_matrix_generator: function
+        Funkcja generująca macierz kosztów.
+
+    Zwraca:
+    tuple: Średnie wartości metryk Precision, Recall, F1 Score oraz Accuracy.
+    """
+    precision_scores = []
+    recall_scores = []
+    f1_scores = []
+    accuracy_scores = []
+
+    for _ in tqdm.tqdm(range(N)):
+        class_probabilities = np.bincount(y) / len(y)
+        if cost_matrix_generator == "fixed_interval":
+            cost_matrix = generate_fixed_interval_cost_matrix(2)
+        else:
+            cost_matrix = generate_probability_dependent_cost_matrix(2, class_probabilities)
+
+        detector = AnomalyDetector(n_clusters=2, metric="euclidean", model_name="kmeans")
+
+        meta_cost = MetaCost(base_detector=detector, cost_matrix=cost_matrix, m=10, n=800)
+
+        # Trenowanie modelu i przypisanie klastrów
+        assigned_clusters = meta_cost.fit_predict(X,y )
+
+        # Mapowanie klastrów na oryginalne klasy (zakładamy, że klasa 0 jest dominująca)
+        # Można również użyć bardziej zaawansowanej logiki do mapowania klastrów na klasy
+        y_pred = AnomalyDetector.transform_labels(assigned_clusters)
+
+
+        precision = precision_score(y, y_pred)
+        recall = recall_score(y, y_pred)
+        f1 = f1_score(y, y_pred)
+        accuracy = accuracy_score(y, y_pred)
+
+        precision_scores.append(precision)
+        recall_scores.append(recall)
+        f1_scores.append(f1)
+        accuracy_scores.append(accuracy)
+
+    avg_precision = np.mean(precision_scores)
+    avg_recall = np.mean(recall_scores)
+    avg_f1 = np.mean(f1_scores)
+    avg_accuracy = np.mean(accuracy_scores)
+
+    return avg_precision, avg_recall, avg_f1, avg_accuracy
+
+def test1():
+    # Generowanie syntetycznego zbioru danych
+    X, y = make_classification(n_samples=1000, n_features=20, n_informative=15, n_redundant=5, n_clusters_per_class=2,
+                               random_state=42)
+
+    validate_rf(X, y)
+
+    # Ocena modelu z Fixed-Interval Cost Matrix
+    avg_precision_fixed, avg_recall_fixed, avg_f1_fixed, avg_accuracy_fixed = evaluate_model(X,y,
+                                                                                             "fixed_interval")
+    print(f"Fixed-Interval Cost Matrix - Average Precision: {avg_precision_fixed:.2f}")
+    print(f"Fixed-Interval Cost Matrix - Average Recall: {avg_recall_fixed:.2f}")
+    print(f"Fixed-Interval Cost Matrix - Average F1 Score: {avg_f1_fixed:.2f}")
+    print(f"Fixed-Interval Cost Matrix - Average Accuracy: {avg_accuracy_fixed:.2f}")
+
+    # Ocena modelu z Probability-Dependent Cost Matrix
+    avg_precision_prob, avg_recall_prob, avg_f1_prob, avg_accuracy_prob = evaluate_model(X, y,
+                                                                                         "probability_dependent")
+    print(f"Probability-Dependent Cost Matrix - Average Precision: {avg_precision_prob:.2f}")
+    print(f"Probability-Dependent Cost Matrix - Average Recall: {avg_recall_prob:.2f}")
+    print(f"Probability-Dependent Cost Matrix - Average F1 Score: {avg_f1_prob:.2f}")
+    print(f"Probability-Dependent Cost Matrix - Average Accuracy: {avg_accuracy_prob:.2f}")
+
+
+
+
+
+def test():
+    # Generowanie syntetycznego zbioru danych
+    X, y = make_classification(n_samples=1000, n_features=2, n_informative=2, n_redundant=0, n_clusters_per_class=1,
+                               random_state=42, n_classes=2)
+
+    # Podział zbioru danych na zbiór treningowy i testowy
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+    # Definicja klasy AnomalyDetector (implementacja jest taka sama jak wcześniej, zakładamy, że już jest zaimportowana)
+
+    # Definicja klasy MetaCost (implementacja jest taka sama jak wcześniej, zakładamy, że już jest zaimportowana)
+
+    # Konfiguracja detektora anomalii
+    detector = AnomalyDetector(model="kmeans", metric="euclidean", n_clusters=2)
+    cost_matrix = np.array([[0, 1], [1, 0]])
+
+    # Inicjalizacja modelu MetaCost
+    meta_cost = MetaCost(base_detector=detector, cost_matrix=cost_matrix, m=10, n=80)
+
+    # Trenowanie modelu i przypisanie klastrów
+    assigned_clusters = meta_cost.fit_predict(X_train)
+
+    # Mapowanie klastrów na oryginalne klasy (zakładamy, że klasa 0 jest dominująca)
+    # Można również użyć bardziej zaawansowanej logiki do mapowania klastrów na klasy
+    y_pred = AnomalyDetector.transform_labels(assigned_clusters)
+
+    # Obliczenie metryk
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
+    accuracy = accuracy_score(y_test, y_pred)
+
+
+
+    # Wyświetlenie wyników
+    print(f"Precision: {precision:.2f}")
+    print(f"Recall: {recall:.2f}")
+    print(f"F1 Score: {f1:.2f}")
+    print(f"Accuracy: {accuracy:.2f}")
+
+test1()
