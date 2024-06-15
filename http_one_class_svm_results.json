@@ -1,0 +1,17 @@
+{
+    "accuracy": 0.6230212573496156,
+    "outliers_accuracy": 1.0,
+    "precision": 0.39873760144274123,
+    "recall": 1.0,
+    "f1": 0.5701392470345539,
+    "precision_recall_curve": null,
+    "auc_pr": null,
+    "positive_recall": 1.0,
+    "negative_recall": 0.4973616764661541,
+    "positive_precision": 0.39873760144274123,
+    "negative_precision": 1.0,
+    "tp_percentage": 0.25,
+    "fp_percentage": 0.37697874265038445,
+    "fn_percentage": 0.0,
+    "tn_percentage": 0.37302125734961555
+}

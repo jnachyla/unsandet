@@ -39,43 +39,52 @@ class Experiments:
         X = scaler.fit_transform(X = X, y = y)
         return (X,y)
 
-    def run_http_one_class(self):
+    def run_http_one_class_anomaly_detection(self):
         """
-        Run one class anomaly detection on the http dataset.
+        Run one class anomaly detection on the HTTP dataset and save results to JSON files.
         :return:
         """
-        X,y = self.http_dataset
+        X, y = self.http_dataset
 
-        (X,y) = subsample_majority_class(X, y, fraction=0.4)
-
-        (X,y) = self._scale(X, y)
+        (X, y) = subsample_majority_class(X, y, fraction=0.4)
+        (X, y) = self._scale(X, y)
 
         Xtrain, ytrain, Xtest, ytest = data_prep.split_binary_dataset(X, y, inliers_to_outliers_ratio=3.0)
 
-        #fit isolation forest
+        # Isolation Forest
         print("Fitting Isolation Forest...")
-        #print shape of Xtrain with name formated
         print(f"Shape of Xtrain: {Xtrain.shape}")
-        isolation_forest = OneClassAnnomalyDetector(model_name = "isolationforest")
+        isolation_forest = OneClassAnnomalyDetector(model_name="isolationforest")
         isolation_forest.fit(Xtrain)
         print("Fitted. Predicting...")
         ypred_forest = isolation_forest.predict(Xtest)
 
-        print("Results: HTTP one class IsolationForest")
-
         evaluator_http_forest = AnomalyDetectorEvaluator(true_labels=ytest, pred_labels=ypred_forest, scores=None)
-        print(evaluator_http_forest.calculate_all_metrics())
+        forest_metrics = evaluator_http_forest.calculate_all_metrics()
+        print("Results: HTTP one class IsolationForest")
+        print(forest_metrics)
 
-        svm = OneClassAnnomalyDetector(model_name = "oneclasssvm")
-        print("Fitting Model...")
+        # Save results to JSON
+        with open('http_isolation_forest_results.json', 'w') as f:
+            json.dump(forest_metrics, f, indent=4)
 
+        # One-Class SVM
+        svm = OneClassAnnomalyDetector(model_name="oneclasssvm")
+        print("Fitting One-Class SVM...")
         svm.fit(Xtrain)
         print("Fitted. Predicting...")
         ypred_svm = svm.predict(Xtest)
 
+        evaluator_http_svm = AnomalyDetectorEvaluator(true_labels=ytest, pred_labels=ypred_svm, scores=None)
+        svm_metrics = evaluator_http_svm.calculate_all_metrics()
         print("Results: HTTP one class SVM")
-        evaluator_http_forest = AnomalyDetectorEvaluator(true_labels=ytest, pred_labels=ypred_svm, scores=None)
-        print(evaluator_http_forest.calculate_all_metrics())
+        print(svm_metrics)
+
+        # Save results to JSON
+        with open('http_one_class_svm_results.json', 'w') as f:
+            json.dump(svm_metrics, f, indent=4)
+
+        print("Results saved to JSON files")
 
     def _evaluate_meta_cost(self,X, y,cost_matrix_generator="fixed_interval", n = 1000, m = 30, N=2, cost_matrix=None, detector = None):
         """
@@ -282,6 +291,6 @@ class Experiments:
         print(evaluator.calculate_all_metrics())
 
 exps = Experiments()
-exps.run_shuttle_meta_cost()
+exps.run_http_one_class_anomaly_detection()
 
 
