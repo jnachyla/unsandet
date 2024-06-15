@@ -9,7 +9,6 @@ from sklearn.covariance import EmpiricalCovariance
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import StandardScaler
-from sklearn.utils import resample
 from sklearn.datasets import make_classification
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score
@@ -53,26 +52,6 @@ class AnomalyDetector:
                 [data_scaled[self.model.labels_ == i].mean(axis=0) for i in range(max(self.model.labels_) + 1)]
             )
 
-    # def predict(self, data):
-    #     """
-    #     Przewiduje punkty najbliższe do centrów klastrów dla KMeans.
-    #     Dla DBSCAN i Agglomerative Clustering zwraca pustą macierz.
-    #
-    #     Parametry:
-    #     data: np.ndarray
-    #         Zbiór danych do przewidywania.
-    #
-    #     Zwraca:
-    #     np.ndarray: Indeksy najbliższych punktów do centrów klastrów (dla KMeans) lub pusta macierz.
-    #     """
-    #     data_scaled = self.scaler.transform(data)
-    #
-    #     if self.model_name == "kmeans":
-    #         closest, _ = pairwise_distances_argmin_min(data_scaled, self.model.cluster_centers_)
-    #         return closest
-    #     elif self.model_name in ["dbscan", "agglomerative"]:
-    #         return np.array([])  # Brak implementacji dla DBSCAN i Agglomerative Clustering
-
     def predict(self, data):
         """
         Przewiduje punkty najbliższe do centrów klastrów.
@@ -97,10 +76,9 @@ class AnomalyDetector:
         if not isinstance(classes, np.ndarray):
             classes = np.array([classes])
 
-        print("Classes dostribitbution outliers to inliers")
-        print(np.bincount(classes))
+        labels = AnomalyDetector.transform_labels(classes)
 
-        return AnomalyDetector.transform_labels(classes)
+        return labels
 
 
     def fit_predict(self, data):
@@ -417,19 +395,15 @@ def generate_probability_dependent_cost_matrix(n_classes, class_probabilities):
     return C
 
 
-def evaluate_model(X,y, cost_matrix_generator = "fixed_interval", N=2):
+def evaluate_model(X,y, cost_matrix_generator = "fixed_interval", N=2, cost_matrix=None):
     """
     Ocena modelu MetaCost na zbiorze treningowym i testowym.
 
     Parametry:
     X_train: np.ndarray
         Zbiór danych treningowych.
-    X_test: np.ndarray
-        Zbiór danych testowych.
     y_train: np.ndarray
         Etykiety danych treningowych.
-    y_test: np.ndarray
-        Etykiety danych testowych.
     cost_matrix_generator: function
         Funkcja generująca macierz kosztów.
 
@@ -443,21 +417,17 @@ def evaluate_model(X,y, cost_matrix_generator = "fixed_interval", N=2):
 
     for _ in tqdm.tqdm(range(N)):
         class_probabilities = np.bincount(y) / len(y)
-        if cost_matrix_generator == "fixed_interval":
+        if cost_matrix is not None:
+            cost_matrix = cost_matrix
+        elif cost_matrix_generator == "fixed_interval":
             cost_matrix = generate_fixed_interval_cost_matrix(2)
         else:
             cost_matrix = generate_probability_dependent_cost_matrix(2, class_probabilities)
 
         detector = AnomalyDetector(n_clusters=2, metric="euclidean", model_name="kmeans")
 
-        cost_matrix = np.array([
-            [0, 1],  # Koszty dla punktów normalnych (klasa 0)
-            [10, 0]  # Koszty dla outlierów (klasa 1)
-        ])
         n = X.shape[0] // 10
-        #n= 100
-        #print n
-        print("Meta Cost n samples: ", n)
+
         meta_cost = MetaCost(base_detector=detector, cost_matrix=cost_matrix, m=30, n=1000)
 
         # Trenowanie modelu i przypisanie klastrów
@@ -485,28 +455,6 @@ def evaluate_model(X,y, cost_matrix_generator = "fixed_interval", N=2):
 
     return avg_precision, avg_recall, avg_f1, avg_accuracy
 
-def test1():
-    # Generowanie syntetycznego zbioru danych
-    X, y = make_classification(n_samples=1000, n_features=5, n_informative=5, n_redundant=0, n_clusters_per_class=1,n_classes=2,
-                               random_state=42)
-
-    validate_rf(X, y)
-
-    # Ocena modelu z Fixed-Interval Cost Matrix
-    avg_precision_fixed, avg_recall_fixed, avg_f1_fixed, avg_accuracy_fixed = evaluate_model(X,y,
-                                                                                             "fixed_interval", N=1)
-    print(f"Fixed-Interval Cost Matrix - Average Precision: {avg_precision_fixed:.2f}")
-    print(f"Fixed-Interval Cost Matrix - Average Recall: {avg_recall_fixed:.2f}")
-    print(f"Fixed-Interval Cost Matrix - Average F1 Score: {avg_f1_fixed:.2f}")
-    print(f"Fixed-Interval Cost Matrix - Average Accuracy: {avg_accuracy_fixed:.2f}")
-
-    # Ocena modelu z Probability-Dependent Cost Matrix
-    avg_precision_prob, avg_recall_prob, avg_f1_prob, avg_accuracy_prob = evaluate_model(X, y,
-                                                                                         "probability_dependent")
-    print(f"Probability-Dependent Cost Matrix - Average Precision: {avg_precision_prob:.2f}")
-    print(f"Probability-Dependent Cost Matrix - Average Recall: {avg_recall_prob:.2f}")
-    print(f"Probability-Dependent Cost Matrix - Average F1 Score: {avg_f1_prob:.2f}")
-    print(f"Probability-Dependent Cost Matrix - Average Accuracy: {avg_accuracy_prob:.2f}")
 
 def test_shuttle():
 
@@ -515,22 +463,17 @@ def test_shuttle():
     y = pd.read_csv("shuttle_eval.csv", header=0).values.ravel()
     validate_rf(X, y)
 
+    cost_matrix = np.array([
+        [0, 1],  # Koszty dla punktów normalnych (klasa 0)
+        [5, 0]  # Koszty dla outlierów (klasa 1)
+    ])
     # Ocena modelu z Fixed-Interval Cost Matrix
     avg_precision_fixed, avg_recall_fixed, avg_f1_fixed, avg_accuracy_fixed = evaluate_model(X,y,
-                                                                                             "fixed_interval", N=5)
+                                                                                             "fixed_interval", N=5, cost_matrix=cost_matrix)
     print(f"Fixed-Interval Cost Matrix - Average Precision: {avg_precision_fixed:.2f}")
     print(f"Fixed-Interval Cost Matrix - Average Recall: {avg_recall_fixed:.2f}")
     print(f"Fixed-Interval Cost Matrix - Average F1 Score: {avg_f1_fixed:.2f}")
     print(f"Fixed-Interval Cost Matrix - Average Accuracy: {avg_accuracy_fixed:.2f}")
-
-    # # Ocena modelu z Probability-Dependent Cost Matrix
-    # avg_precision_prob, avg_recall_prob, avg_f1_prob, avg_accuracy_prob = evaluate_model(X, y,
-    #                                                                                      "probability_dependent", N=10)
-    # print(f"Probability-Dependent Cost Matrix - Average Precision: {avg_precision_prob:.2f}")
-    # print(f"Probability-Dependent Cost Matrix - Average Recall: {avg_recall_prob:.2f}")
-    # print(f"Probability-Dependent Cost Matrix - Average F1 Score: {avg_f1_prob:.2f}")
-    # print(f"Probability-Dependent Cost Matrix - Average Accuracy: {avg_accuracy_prob:.2f}")
-
 
 
 
@@ -573,5 +516,3 @@ def test():
     print(f"Recall: {recall:.2f}")
     print(f"F1 Score: {f1:.2f}")
     print(f"Accuracy: {accuracy:.2f}")
-
-test_shuttle()

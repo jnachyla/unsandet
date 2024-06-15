@@ -1,14 +1,7 @@
-import numpy as np
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, precision_recall_curve, auc
 import pandas as pd
-from sklearn.metrics import (
-    auc,
-    precision_recall_curve,
-    precision_score,
-    recall_score,
-    accuracy_score, confusion_matrix,
-)
+import numpy as np
 from warnings import warn
-
 
 class AnomalyDetectorEvaluator:
     def __init__(
@@ -47,6 +40,10 @@ class AnomalyDetectorEvaluator:
         self.recall = recall_score(self.true_labels, self.pred_labels)
         return self.recall
 
+    def calculate_f1(self):
+        self.f1 = f1_score(self.true_labels, self.pred_labels)
+        return self.f1
+
     def calculate_pr_curve(self):
         if self.scores is None:
             raise ValueError("scores is None. You can't calculate the pr curve.")
@@ -75,31 +72,19 @@ class AnomalyDetectorEvaluator:
         fn_percentage = fn / total
         tn_percentage = tn / total
 
-        # Tworzenie DataFrame z procentową macierzą konfuzji
-        data_percentage = {
-            '': ['Positive Class', 'Negative Class'],
-            'Positive Prediction': [f'True Positive (TP) {tp_percentage:.2%}',
-                                    f'False Positive (FP) {fp_percentage:.2%}'],
-            'Negative Prediction': [f'False Negative (FN) {fn_percentage:.2%}',
-                                    f'True Negative (TN) {tn_percentage:.2%}']
+        # Zwracanie metryk jako słownik
+        metrics = {
+            'positive_recall': positive_recall,
+            'negative_recall': negative_recall,
+            'positive_precision': positive_precision,
+            'negative_precision': negative_precision,
+            'tp_percentage': tp_percentage,
+            'fp_percentage': fp_percentage,
+            'fn_percentage': fn_percentage,
+            'tn_percentage': tn_percentage
         }
 
-        df_percentage = pd.DataFrame(data_percentage)
-
-        # Tworzenie DataFrame z metrykami procentowymi
-        metrics_data = {
-            'Metric': ['Positive Recall', 'Negative Recall', 'Positive Precision', 'Negative Precision'],
-            'Value': [
-                f'{positive_recall:.2%}',
-                f'{negative_recall:.2%}',
-                f'{positive_precision:.2%}',
-                f'{negative_precision:.2%}'
-            ]
-        }
-
-        df_metrics = pd.DataFrame(metrics_data)
-
-        return df_percentage,df_metrics
+        return metrics
 
     def calculate_all_metrics(self):
         metrics = {}
@@ -108,6 +93,7 @@ class AnomalyDetectorEvaluator:
         metrics['outliers_accuracy'] = self.calculate_outliers_accuracy()
         metrics['precision'] = self.calculate_precision()
         metrics['recall'] = self.calculate_recall()
+        metrics['f1'] = self.calculate_f1()
 
         if self.scores is not None:
             metrics['precision_recall_curve'] = self.calculate_pr_curve()
@@ -116,8 +102,7 @@ class AnomalyDetectorEvaluator:
             metrics['precision_recall_curve'] = None
             metrics['auc_pr'] = None
 
-        confusion_matrix_percentage_df, metrics_df = self.imbalanced_metrics()
-        metrics['confusion_matrix_percentage'] = confusion_matrix_percentage_df
-        metrics['imbalanced_metrics'] = metrics_df
+        imbalanced_metrics = self.imbalanced_metrics()
+        metrics.update(imbalanced_metrics)
 
         return metrics
