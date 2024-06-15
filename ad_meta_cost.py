@@ -123,7 +123,9 @@ class AnomalyDetector:
 class MetaCost:
     def __init__(self, base_detector: AnomalyDetector, cost_matrix: np.ndarray, m: int, n: int, p: bool = False, q: bool = True):
         """
-        Inicjalizuje instancję klasy MetaCost.
+        Inicjalizuje instancję klasy dla algorytmu MetaCost dla algorytmów grupowania.
+
+        Implementacja w oparciu o:  https://homes.cs.washington.edu/~pedrod/papers/kdd99.pdf
 
         Parametry:
         base_detector: AnomalyDetector
@@ -140,7 +142,34 @@ class MetaCost:
         q: bool (domyślnie True)
             Jeżeli `True`, wszystkie resample (próbki) są używane do obliczania prawdopodobieństw dla każdego przykładu.
             Jeżeli `False`, uwzględniane są tylko te modele, które zawierają punkt x w swoich próbkach.
+
+        Pseudokod:
+        Inputs:
+        S is the training set,
+        L is a classification learning algorithm,
+        C is a cost matrix,
+        m is the number of resamples to generate,
+        n is the number of examples in each resample,
+        p is True iff L produces class probabilities,
+        q is True iff all resamples are to be used for each example.
+
+        Procedure MetaCost (S, L, C, m, n, p, q)
+        For i = 1 to m
+            Let Si be a resample of S with n examples.
+            Let Mi = Model produced by applying L to Si.
+        For each example x in S
+            For each class j
+                Let P(j|x) = 1/SUMi ∑i P(j|x, Mi)
+                Where
+                    If p then P(j|x, Mi) is produced by Mi
+                    Else P(j|x, Mi) = 1 for the class predicted by Mi for x, and 0 for all others.
+                    If q then i ranges over all Mi
+                    Else i ranges over all Mi such that x ∉ Si.
+            Let x's class = argmini ∑j P(j|x)C(i, j).
+        Let M = Model produced by applying L to S.
+        Return M.
         """
+
         self.base_detector = base_detector
         self.cost_matrix = cost_matrix
         self.m = m
@@ -148,14 +177,31 @@ class MetaCost:
         self.p = p
         self.q = q
 
+
     def fit_predict(self, data):
+        """
+        Trenuje model MetaCost na danych i zwraca przypisania do klas.
+
+        Parametry:
+        data: np.ndarray
+            Zbiór danych do trenowania modelu.
+
+        Zwraca:
+        np.ndarray: Przypisania do klas dla każdego przykładu w zbiorze danych.
+
+        Pseudokod:
+        For i = 1 to m
+            Let Si be a resample of S with n examples.
+            Let Mi = Model produced by applying L to Si.
+        """
         self.base_detector.fit(data)
         self.models = []
         self.samples = []
 
         for _ in range(self.m):
             sample = resample(data, n_samples=self.n)
-            model = AnomalyDetector(model=self.base_detector.model_name, metric=self.base_detector.metric, n_clusters=self.base_detector.n_clusters)
+            model = AnomalyDetector(model=self.base_detector.model_name, metric=self.base_detector.metric,
+                                    n_clusters=self.base_detector.n_clusters)
             model.fit(sample)
             self.models.append(model)
             self.samples.append(sample)
@@ -163,18 +209,41 @@ class MetaCost:
         probabilities = self._calculate_probabilities(data)
         assigned_clusters = self._assign_clusters(data, probabilities)
 
-        final_model = AnomalyDetector(model=self.base_detector.model_name, metric=self.base_detector.metric, n_clusters=self.base_detector.n_clusters)
+        final_model = AnomalyDetector(model=self.base_detector.model_name, metric=self.base_detector.metric,
+                                      n_clusters=self.base_detector.n_clusters)
         final_model.fit(data)
         final_model.model.fit(data, assigned_clusters)
 
         return assigned_clusters
 
+
     def _calculate_probabilities(self, data):
+        """
+        Oblicza prawdopodobieństwa przynależności do klas dla każdego przykładu.
+
+        Parametry:
+        data: np.ndarray
+            Zbiór danych do trenowania modelu.
+
+        Zwraca:
+        np.ndarray: Prawdopodobieństwa przynależności do klas dla każdego przykładu.
+
+        Pseudokod:
+        For each example x in S
+            For each class j
+                Let P(j|x) = 1/SUMi ∑i P(j|x, Mi)
+                Where
+                    If p then P(j|x, Mi) is produced by Mi
+                    Else P(j|x, Mi) = 1 for the class predicted by Mi for x, and 0 for all others.
+                    If q then i ranges over all Mi
+                    Else i ranges over all Mi such that x ∉ Si.
+        """
         n_samples, n_clusters = data.shape[0], self.base_detector.n_clusters
         probabilities = np.zeros((n_samples, n_clusters))
 
         for j, x in enumerate(data):
-            relevant_models = range(len(self.models)) if self.q else [i for i in range(len(self.models)) if x not in self.samples[i]]
+            relevant_models = range(len(self.models)) if self.q else [i for i in range(len(self.models)) if
+                                                                      x not in self.samples[i]]
             for i in relevant_models:
                 model = self.models[i]
                 if self.p:
@@ -188,7 +257,23 @@ class MetaCost:
 
         return probabilities
 
+
     def _assign_clusters(self, data, probabilities):
+        """
+        Przypisuje klastry na podstawie minimalnego kosztu.
+
+        Parametry:
+        data: np.ndarray
+            Zbiór danych do trenowania modelu.
+        probabilities: np.ndarray
+            Prawdopodobieństwa przynależności do klas dla każdego przykładu.
+
+        Zwraca:
+        np.ndarray: Przypisania do klas dla każdego przykładu w zbiorze danych.
+
+        Pseudokod:
+        Let x's class = argmini ∑j P(j|x)C(i, j).
+        """
         n_samples, n_clusters = probabilities.shape
         assigned_clusters = np.zeros(n_samples, dtype=int)
 
@@ -197,23 +282,3 @@ class MetaCost:
             assigned_clusters[i] = np.argmin(cost)
 
         return assigned_clusters
-
-
-# Przykład użycia
-def test():
-    from sklearn.datasets import make_blobs
-
-    X, _ = make_blobs(n_samples=100, centers=2, n_features=2, random_state=42)
-
-    detector = AnomalyDetector(model="kmeans", metric="euclidean", n_clusters=2)
-    cost_matrix = np.array([[0, 1], [1, 0]])
-
-    meta_cost = MetaCost(base_detector=detector, cost_matrix=cost_matrix, m=10, n=80)
-    meta_cost.fit(X)
-
-    labels, distances = detector.fit_predict(X)
-
-    print("Ostateczne środki klastrów:")
-    print(detector.centers)
-    print("Przypisane klastry dla każdego przykładu:")
-    print(labels)
