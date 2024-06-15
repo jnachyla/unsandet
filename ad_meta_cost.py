@@ -142,10 +142,13 @@ class AnomalyDetector:
         if self.metric == "mahalanobis":
             covariance_matrix = EmpiricalCovariance().fit(data).covariance_
             inv_covariance_matrix = np.linalg.inv(covariance_matrix)
-            distances = [
-                mahalanobis(x, centers[cluster], inv_covariance_matrix)
-                for x, cluster in zip(data, cdist(data, centers, "mahalanobis"))
-            ]
+            distances = []
+            for x, cluster in zip(data, cdist(data, centers, "mahalanobis")):
+                cluster_ = centers[0]
+                cluster1 = centers[1]
+                d1 = mahalanobis(x, cluster_, inv_covariance_matrix)
+                d2 = mahalanobis(x, cluster1, inv_covariance_matrix)
+                distances.append(np.array([d1, d2]))
         if self.metric == "cityblock":
             distances = cdist(data, centers, metric="cityblock")
         if self.metric == "euclidean":

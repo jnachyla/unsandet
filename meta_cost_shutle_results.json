@@ -1,0 +1,98 @@
+[
+    {
+        "metric": "mahalanobis",
+        "cost_matrix": [
+            [
+                0,
+                1
+            ],
+            [
+                10,
+                0
+            ]
+        ],
+        "avg_metrics": {
+            "accuracy": 0.8515306434201684,
+            "outliers_accuracy": 0.9700939903161492,
+            "precision": 0.32171346027212044,
+            "recall": 0.9700939903161492,
+            "f1": 0.4831559749921728,
+            "auc_pr": null,
+            "positive_recall": 0.9700939903161492,
+            "negative_recall": 0.8423989821436407,
+            "positive_precision": 0.32171346027212044,
+            "negative_precision": 0.9972736745739861,
+            "tp_percentage": 0.06937287410636088,
+            "fp_percentage": 0.14633073303867855,
+            "fn_percentage": 0.0021386235411532274,
+            "tn_percentage": 0.7821577693138073
+        },
+        "n": 1000,
+        "m": 30,
+        "N": 5
+    },
+    {
+        "metric": "euclidean",
+        "cost_matrix": [
+            [
+                0,
+                1
+            ],
+            [
+                10,
+                0
+            ]
+        ],
+        "avg_metrics": {
+            "accuracy": 0.8515428641261178,
+            "outliers_accuracy": 0.9706636285958418,
+            "precision": 0.3217302968733497,
+            "recall": 0.9706636285958418,
+            "f1": 0.48326497447257666,
+            "auc_pr": null,
+            "positive_recall": 0.9706636285958418,
+            "negative_recall": 0.8423682709603826,
+            "positive_precision": 0.3217302968733497,
+            "negative_precision": 0.9973255267807624,
+            "tp_percentage": 0.06941360979285903,
+            "fp_percentage": 0.14635924801922726,
+            "fn_percentage": 0.0020978878546550708,
+            "tn_percentage": 0.7821292543332586
+        },
+        "n": 1000,
+        "m": 30,
+        "N": 5
+    },
+    {
+        "metric": "cityblock",
+        "cost_matrix": [
+            [
+                0,
+                1
+            ],
+            [
+                10,
+                0
+            ]
+        ],
+        "avg_metrics": {
+            "accuracy": 0.8576247021202924,
+            "outliers_accuracy": 0.9573910566790088,
+            "precision": 0.3294897747068707,
+            "recall": 0.9573910566790088,
+            "f1": 0.4902543096418041,
+            "auc_pr": null,
+            "positive_recall": 0.9573910566790088,
+            "negative_recall": 0.849940771289431,
+            "positive_precision": 0.3294897747068707,
+            "negative_precision": 0.9961537989095293,
+            "tp_percentage": 0.06846446829745198,
+            "fp_percentage": 0.1393282685296454,
+            "fn_percentage": 0.0030470293500621222,
+            "tn_percentage": 0.7891602338228405
+        },
+        "n": 1000,
+        "m": 30,
+        "N": 5
+    }
+]

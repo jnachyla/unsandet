@@ -1,0 +1,98 @@
+[
+    {
+        "metric": "mahalanobis",
+        "cost_matrix": [
+            [
+                0.0,
+                1.0
+            ],
+            [
+                1.0039112875406653,
+                0.0
+            ]
+        ],
+        "avg_metrics": {
+            "accuracy": 0.5805017815040758,
+            "outliers_accuracy": 0.7942107643600181,
+            "precision": 0.0073311381983889356,
+            "recall": 0.7942107643600181,
+            "f1": 0.014528129536814871,
+            "auc_pr": null,
+            "positive_recall": 0.7942107643600181,
+            "negative_recall": 0.5796659042221031,
+            "positive_precision": 0.0073311381983889356,
+            "negative_precision": 0.9986172160790767,
+            "tp_percentage": 0.003094284032719058,
+            "fp_percentage": 0.41869645355578344,
+            "fn_percentage": 0.0008017649401407583,
+            "tn_percentage": 0.5774074974713568
+        },
+        "n": 10000,
+        "m": 30,
+        "N": 5
+    },
+    {
+        "metric": "euclidean",
+        "cost_matrix": [
+            [
+                0.0,
+                1.0
+            ],
+            [
+                1.0039112875406653,
+                0.0
+            ]
+        ],
+        "avg_metrics": {
+            "accuracy": 0.7474436914315118,
+            "outliers_accuracy": 0.01791044776119403,
+            "precision": 0.03600304198220959,
+            "recall": 0.01791044776119403,
+            "f1": 0.012119679292682244,
+            "auc_pr": null,
+            "positive_recall": 0.01791044776119403,
+            "negative_recall": 0.7502971057179805,
+            "positive_precision": 0.03600304198220959,
+            "negative_precision": 0.9945493887809249,
+            "tp_percentage": 6.97799816034594e-05,
+            "fp_percentage": 0.248730039577232,
+            "fn_percentage": 0.003826268991256357,
+            "tn_percentage": 0.7473739114499083
+        },
+        "n": 10000,
+        "m": 30,
+        "N": 5
+    },
+    {
+        "metric": "cityblock",
+        "cost_matrix": [
+            [
+                0.0,
+                1.0
+            ],
+            [
+                1.0039112875406653,
+                0.0
+            ]
+        ],
+        "avg_metrics": {
+            "accuracy": 0.5708460646557344,
+            "outliers_accuracy": 0.9950248756218907,
+            "precision": 0.00895311846886905,
+            "recall": 0.9950248756218907,
+            "f1": 0.01774655000189619,
+            "auc_pr": null,
+            "positive_recall": 0.9950248756218907,
+            "negative_recall": 0.5691869793573885,
+            "positive_precision": 0.00895311846886905,
+            "negative_precision": 0.9999658128696403,
+            "tp_percentage": 0.0038766656446366328,
+            "fp_percentage": 0.4291345520160424,
+            "fn_percentage": 1.9383328223183164e-05,
+            "tn_percentage": 0.5669693990110979
+        },
+        "n": 10000,
+        "m": 30,
+        "N": 5
+    }
+]

@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
@@ -75,9 +77,9 @@ class Experiments:
         evaluator_http_forest = AnomalyDetectorEvaluator(true_labels=ytest, pred_labels=ypred_svm, scores=None)
         print(evaluator_http_forest.calculate_all_metrics())
 
-    def _evaluate_meta_cost(self,X, y, cost_matrix_generator="fixed_interval", n = 1000, m = 30, N=2, cost_matrix=None):
+    def _evaluate_meta_cost(self,X, y,cost_matrix_generator="fixed_interval", n = 1000, m = 30, N=2, cost_matrix=None, detector = None):
         """
-        Ocena modelu MetaCost na zbiorze treningowym i testowym.
+        Ocena modelu MetaCost
 
         Parametry:
         X: np.ndarray
@@ -95,6 +97,9 @@ class Experiments:
         dict: Średnie wartości metryk Precision, Recall, F1 Score oraz Accuracy.
         """
 
+        if detector is None:
+            raise ValueError("Annomaly Detector must be provided.")
+
         all_metrics = []
 
         for _ in tqdm(range(N)):
@@ -105,8 +110,6 @@ class Experiments:
                 cost_matrix = generate_fixed_interval_cost_matrix(2)
             else:
                 cost_matrix = generate_probability_dependent_cost_matrix(2, class_probabilities)
-
-            detector = AnomalyDetector(n_clusters=2, metric="euclidean", model_name="kmeans")
 
             print("Meta Cost n samples: ", n)
             meta_cost = MetaCost(base_detector=detector, cost_matrix=cost_matrix, m=m, n=n)
@@ -143,20 +146,110 @@ class Experiments:
             except:
                 continue
         return avg_metrics
+
     def run_shuttle_meta_cost(self):
         """
-        Run MetaCost on the shuttle dataset.
+        Run MetaCost on the Shuttle dataset with varying distance metrics and save results to a JSON file.
         :return:
         """
-        X,y = self.shuttle_dataset
+        X = self.shuttle_dataset[0]
+        y = np.ravel(self.shuttle_dataset[1])
+        y = y.astype(np.int64)
 
         print("Evaluating MetaCost on the Shuttle dataset...")
-        cost_matrix = np.array([[0, 1],
-                                [10, 0]])
-        avg_metrics = self._evaluate_meta_cost(X, y, cost_matrix_generator="fixed_interval", n=1000, m=30, N=2, cost_matrix=cost_matrix)
 
-        print("Results: Shuttle MetaCost")
-        print(avg_metrics)
+        # Definiowanie metryk odległości
+        distance_metrics = ["mahalanobis","euclidean", "cityblock"]
+        n = 1000
+        m = 30
+        N = 5
+
+        all_results = []
+
+        for metric in distance_metrics:
+            print(f"Running MetaCost with metric={metric}...")
+
+            # Create setted based on experiments
+            cost = 10
+            cost_matrix = np.array([[0, 1],
+                                    [cost, 0]])
+
+            detector = AnomalyDetector(n_clusters=2, metric=metric, model_name="kmeans")
+            avg_metrics = self._evaluate_meta_cost(X, y, cost_matrix_generator="fixed_interval", n=n, m=m, N=N,
+                                                   cost_matrix=cost_matrix, detector=detector)
+
+            print(f"MetaCost results with metric={metric}: {cost_matrix}")
+            print(avg_metrics)
+
+            result = {
+                'metric': metric,
+                'cost_matrix': cost_matrix.tolist(),
+                'avg_metrics': avg_metrics,
+                'n': n,
+                'm': m,
+                'N': N
+            }
+            all_results.append(result)
+
+        # Zapis wyników do pliku JSON
+        with open('meta_cost_shutle_results.json', 'w') as f:
+            json.dump(all_results, f, indent=4)
+
+        print("Results saved to meta_cost_results.json")
+
+
+    def run_http_meta_cost(self):
+        """
+        Run MetaCost on the HTTP dataset with varying distance metrics and save results to a JSON file.
+        :return:
+        """
+        X = self.http_dataset[0]
+        y = np.ravel(self.http_dataset[1])
+        y = y.astype(np.int64)
+
+        print("Evaluating MetaCost on the HTTP dataset...")
+
+        # Definiowanie metryk odległości
+        distance_metrics = ["mahalanobis","euclidean", "cityblock"]
+        n = 10_000  # Stała wartość n
+        m = 30  # Stała wartość m
+        N = 5  # Liczba iteracji oceny
+
+        all_results = []
+
+        for metric in distance_metrics:
+            print(f"Running MetaCost with metric={metric}...")
+
+            # Create cost matrix based on disproportion of minority/majority class
+            cost = 1 + ((np.bincount(y)[1] / np.bincount(y)[0]))
+            cost_matrix = np.array([[0, 1],
+                                    [cost, 0]])
+
+            detector = AnomalyDetector(n_clusters=2, metric=metric, model_name="kmeans")
+            avg_metrics = self._evaluate_meta_cost(X, y, cost_matrix_generator="fixed_interval", n=n, m=m, N=N,
+                                                   cost_matrix=cost_matrix, detector=detector)
+
+            print(f"MetaCost results with metric={metric}: {cost_matrix}")
+            print(avg_metrics)
+
+            result = {
+                'metric': metric,
+                'cost_matrix': cost_matrix.tolist(),
+                'avg_metrics': avg_metrics,
+                'n': n,
+                'm': m,
+                'N': N
+            }
+            all_results.append(result)
+
+        # Zapis wyników do pliku JSON
+        with open('meta_cost_http_results.json', 'w') as f:
+            json.dump(all_results, f, indent=4)
+
+        print("Results saved to meta_cost_results.json")
+
+
+
     def run_http_kmeans(self):
         X = self.http_dataset[0]
         y = np.ravel(self.http_dataset[1])
