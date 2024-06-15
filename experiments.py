@@ -5,8 +5,9 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
+from anomaly_detector import AnomalyDetector
 import data_prep
-from ad_meta_cost import MetaCost, generate_probability_dependent_cost_matrix, generate_fixed_interval_cost_matrix, AnomalyDetector
+from ad_meta_cost import MetaCost, generate_probability_dependent_cost_matrix, generate_fixed_interval_cost_matrix
 from ad_one_class import OneClassAnnomalyDetector
 
 from metrics import AnomalyDetectorEvaluator
@@ -39,7 +40,7 @@ class Experiments:
         X = scaler.fit_transform(X = X, y = y)
         return (X,y)
 
-    def run_http_one_class_anomaly_detection(self):
+    def run_http_one_class(self):
         """
         Run one class anomaly detection on the HTTP dataset and save results to JSON files.
         :return:
@@ -65,7 +66,7 @@ class Experiments:
         print(forest_metrics)
 
         # Save results to JSON
-        with open('http_isolation_forest_results.json', 'w') as f:
+        with open('isolationforest_http_results.json', 'w') as f:
             json.dump(forest_metrics, f, indent=4)
 
         # One-Class SVM
@@ -81,10 +82,59 @@ class Experiments:
         print(svm_metrics)
 
         # Save results to JSON
-        with open('http_one_class_svm_results.json', 'w') as f:
+        with open('svm_http_results.json', 'w') as f:
             json.dump(svm_metrics, f, indent=4)
 
         print("Results saved to JSON files")
+
+    def run_shuttle_one_class(self):
+        """
+        Run one class anomaly detection on the Shuttle dataset and save results to JSON files.
+        :return:
+        """
+        X, y = self.shuttle_dataset
+
+        (X, y) = subsample_majority_class(X, y, fraction=0.4)
+        (X, y) = self._scale(X, y)
+
+        Xtrain, ytrain, Xtest, ytest = data_prep.split_binary_dataset(X, y, inliers_to_outliers_ratio=3.0)
+
+        # Isolation Forest
+        print("Fitting Isolation Forest...")
+        print(f"Shape of Xtrain: {Xtrain.shape}")
+        isolation_forest = OneClassAnnomalyDetector(model_name="isolationforest")
+        isolation_forest.fit(Xtrain)
+        print("Fitted. Predicting...")
+        ypred_forest = isolation_forest.predict(Xtest)
+
+        evaluator_shuttle_forest = AnomalyDetectorEvaluator(true_labels=ytest, pred_labels=ypred_forest, scores=None)
+        forest_metrics = evaluator_shuttle_forest.calculate_all_metrics()
+        print("Results: Shuttle one class IsolationForest")
+        print(forest_metrics)
+
+        # Save results to JSON
+        with open('isolationforest_shuttle_results.json', 'w') as f:
+            json.dump(forest_metrics, f, indent=4)
+
+        # One-Class SVM
+        svm = OneClassAnnomalyDetector(model_name="oneclasssvm")
+        print("Fitting One-Class SVM...")
+        svm.fit(Xtrain)
+        print("Fitted. Predicting...")
+        ypred_svm = svm.predict(Xtest)
+
+        evaluator_shuttle_svm = AnomalyDetectorEvaluator(true_labels=ytest, pred_labels=ypred_svm, scores=None)
+        svm_metrics = evaluator_shuttle_svm.calculate_all_metrics()
+        print("Results: Shuttle one class SVM")
+        print(svm_metrics)
+
+        # Save results to JSON
+        with open('svm_shuttle_results.json', 'w') as f:
+            json.dump(svm_metrics, f, indent=4)
+
+        print("Results saved to JSON files")
+
+
 
     def _evaluate_meta_cost(self,X, y,cost_matrix_generator="fixed_interval", n = 1000, m = 30, N=2, cost_matrix=None, detector = None):
         """
@@ -201,7 +251,7 @@ class Experiments:
             all_results.append(result)
 
         # Zapis wyników do pliku JSON
-        with open('meta_cost_shutle_results.json', 'w') as f:
+        with open('metacost_shutle_results.json', 'w') as f:
             json.dump(all_results, f, indent=4)
 
         print("Results saved to meta_cost_results.json")
@@ -252,45 +302,299 @@ class Experiments:
             all_results.append(result)
 
         # Zapis wyników do pliku JSON
-        with open('meta_cost_http_results.json', 'w') as f:
+        with open('metacost_http_results.json', 'w') as f:
             json.dump(all_results, f, indent=4)
 
         print("Results saved to meta_cost_results.json")
 
-
-
-    def run_http_kmeans(self):
+    def run_http_kmeans_experiment(self):
+        """
+        Run KMeans experiment on the HTTP dataset with varying distance metrics and save results to separate JSON files.
+        :return:
+        """
         X = self.http_dataset[0]
         y = np.ravel(self.http_dataset[1])
 
+        print("Evaluating KMeans on the HTTP dataset...")
 
-        kmeans = AnomalyDetector(model="kmeans", n_clusters=2)
-        pred_kmeans, distances_kmeans = kmeans.fit_predict(data=X)
-        labels_kmeans = AnomalyDetector.transform_labels(pred_kmeans)
-        distances_shuttle_kmeans = AnomalyDetector.transform_distances(labels_kmeans)
-        evaluator = AnomalyDetectorEvaluator(y, pred_kmeans, distances_kmeans)
+        # Definiowanie metryk odległości
+        distance_metrics = ["euclidean", "manhattan", "mahalanobis"]
 
-        print(evaluator.calculate_all_metrics())
+        all_results = []
 
-    def run_http_kmeans_metacost(self):
+        for metric in distance_metrics:
+            print(f"Running KMeans with metric={metric}...")
+
+            # Tworzenie modelu KMeans z odpowiednią metryką odległości
+            model = AnomalyDetector(model="kmeans", n_clusters=2, metric=metric)
+            ypred, distances = model.fit_predict(data=X)
+            ypred = AnomalyDetector.transform_labels(ypred)
+            distances = AnomalyDetector.transform_distances(distances)
+
+            # Ocena modelu
+            evaluator = AnomalyDetectorEvaluator(true_labels=y, pred_labels=ypred, scores=distances)
+            metrics = evaluator.calculate_all_metrics()
+
+            print(f"KMeans results with metric={metric}")
+            print(metrics)
+            metrics["precision_recall_curve"] = 0
+
+            result = {
+                'metric': metric,
+                'avg_metrics': metrics
+            }
+
+            all_results.append(result)
+
+
+        # Zapis wszystkich wyników do jednego pliku JSON
+        with open('kmeans_http_results.json', 'w') as f:
+            json.dump(all_results, f, indent=4)
+
+        print("Results saved to separate JSON files and kmeans_all_results.json")
+
+    def run_http_dbscan_experiment(self):
+        """
+        Run KMeans experiment on the HTTP dataset with varying distance metrics and save results to separate JSON files.
+        :return:
+        """
         X = self.http_dataset[0]
         y = np.ravel(self.http_dataset[1])
 
+        (X, y) = subsample_majority_class(X, y, fraction=0.1)
 
-        kmeans = AnomalyDetector(model="kmeans", n_clusters=2)
-        cost_matrix = np.array([[0, 1], [1, 0]])
+        print("Evaluating DBSCAN on the HTTP dataset...")
 
-        meta_cost = MetaCost(base_detector=kmeans, cost_matrix=cost_matrix, m=3, n=1000)
-        y_predicted = meta_cost.fit_predict(X)
+        # Definiowanie metryk odległości
+        distance_metrics = ["euclidean", "manhattan"]
+
+        all_results = []
+
+        for metric in distance_metrics:
+            print(f"Running DBscan with metric={metric}...")
+
+            # Tworzenie modelu KMeans z odpowiednią metryką odległości
+            model = AnomalyDetector(model="dbscan", metric=metric)
+            ypred, distances = model.fit_predict(data=X)
+            ypred = AnomalyDetector.transform_labels(ypred)
+            distances = AnomalyDetector.transform_distances(distances)
+
+            # Ocena modelu
+            evaluator = AnomalyDetectorEvaluator(true_labels=y, pred_labels=ypred, scores=distances)
+            metrics = evaluator.calculate_all_metrics()
+
+            print(f"DBScan results with metric={metric}")
+            print(metrics)
+            metrics["precision_recall_curve"] = 0
+
+            result = {
+                'metric': metric,
+                'avg_metrics': metrics
+            }
+
+            all_results.append(result)
+
+        # Zapis wszystkich wyników do jednego pliku JSON
+        with open('dbscan_http_results.json', 'w') as f:
+            json.dump(all_results, f, indent=4)
+
+        print("Results saved to separate JSON files and kmeans_all_results.json")
+
+    def run_http_agglomerative_experiment(self):
+        """
+        Run Agglomerative experiment on the HTTP dataset with varying distance metrics and save results to separate JSON files.
+        :return:
+        """
+        X = self.http_dataset[0]
+        y = np.ravel(self.http_dataset[1])
+
+        (X, y) = subsample_majority_class(X, y, fraction=0.05)
+
+        print("Evaluating Agglomerative on the HTTP dataset...")
+
+        # Definiowanie metryk odległości
+        distance_metrics = ["euclidean", "manhattan", "mahalanobis"]
+
+        all_results = []
+
+        for metric in distance_metrics:
+            print(f"Running Agglomerative with metric={metric}...")
+
+            # Tworzenie modelu KMeans z odpowiednią metryką odległości
+            model = AnomalyDetector(model="agglomerative", metric=metric, n_clusters=2)
+            ypred, distances = model.fit_predict(data=X)
+            ypred = AnomalyDetector.transform_labels(ypred)
+            distances = AnomalyDetector.transform_distances(distances)
+
+            # Ocena modelu
+            evaluator = AnomalyDetectorEvaluator(true_labels=y, pred_labels=ypred, scores=distances)
+            metrics = evaluator.calculate_all_metrics()
+
+            print(f"Agglomerative results with metric={metric}")
+            print(metrics)
+            metrics["precision_recall_curve"] = 0
+
+            result = {
+                'metric': metric,
+                'avg_metrics': metrics
+            }
+
+            all_results.append(result)
+
+        # Zapis wszystkich wyników do jednego pliku JSON
+        with open('agglomerative_http_results.json', 'w') as f:
+            json.dump(all_results, f, indent=4)
+
+        print("Results saved to separate JSON files and kmeans_all_results.json")
+    def run_shuttle_kmeans_experiment(self):
+        """
+        Run KMeans experiment on the Shuttle dataset with varying distance metrics and save results to separate JSON files.
+        :return:
+        """
+        X = self.shuttle_dataset[0]
+        y = np.ravel(self.shuttle_dataset[1])
+
+        print("Evaluating KMeans on the Shuttle dataset...")
+
+        # Definiowanie metryk odległości
+        distance_metrics = ["euclidean", "manhattan", "mahalanobis"]
+
+        all_results = []
+
+        for metric in distance_metrics:
+            print(f"Running KMeans with metric={metric}...")
+
+            # Tworzenie modelu KMeans z odpowiednią metryką odległości
+            model = AnomalyDetector(model="kmeans", n_clusters=2, metric=metric)
+            ypred, distances = model.fit_predict(data=X)
+            ypred = AnomalyDetector.transform_labels(ypred)
+            distances = AnomalyDetector.transform_distances(distances)
+
+            # Ocena modelu
+            evaluator = AnomalyDetectorEvaluator(true_labels=y, pred_labels=ypred, scores=distances)
+            metrics = evaluator.calculate_all_metrics()
+
+            print(f"KMeans results with metric={metric}")
+            print(metrics)
+            metrics["precision_recall_curve"] = 0
+
+            result = {
+                'metric': metric,
+                'avg_metrics': metrics
+            }
+
+            all_results.append(result)
+
+        # Zapis wszystkich wyników do jednego pliku JSON
+        with open('kmeans_shuttle_results.json', 'w') as f:
+            json.dump(all_results, f, indent=4)
+
+        print("Results saved to separate JSON files and kmeans_all_results.json")
+
+    def run_shuttle_dbscan_experiment(self):
+        """
+        Run DBSCAN experiment on the Shuttle dataset with varying distance metrics and save results to separate JSON files.
+        :return:
+        """
+        X = self.shuttle_dataset[0]
+        y = np.ravel(self.shuttle_dataset[1])
 
 
-        labels_kmeans = AnomalyDetector.transform_labels(y_predicted)
 
-        evaluator = AnomalyDetectorEvaluator(y, labels_kmeans, None)
+        print("Evaluating DBSCAN on the Shuttle dataset...")
 
-        print(evaluator.calculate_all_metrics())
+        # Definiowanie metryk odległości
+        distance_metrics = ["euclidean", "manhattan"]
+
+        all_results = []
+
+        for metric in distance_metrics:
+            print(f"Running DBSCAN with metric={metric}...")
+
+            # Tworzenie modelu KMeans z odpowiednią metryką odległości
+            model = AnomalyDetector(model="dbscan", metric=metric)
+            if metric == "mahalanobis":
+                (X, y) = subsample_majority_class(X, y, fraction=0.2)
+
+            ypred, distances = model.fit_predict(data=X)
+            ypred = AnomalyDetector.transform_labels(ypred)
+            distances = AnomalyDetector.transform_distances(distances)
+
+            # Ocena modelu
+            evaluator = AnomalyDetectorEvaluator(true_labels=y, pred_labels=ypred, scores=distances)
+            metrics = evaluator.calculate_all_metrics()
+
+            print(f"DBSCAN results with metric={metric}")
+            print(metrics)
+            metrics["precision_recall_curve"] = 0
+
+            result = {
+                'metric': metric,
+                'avg_metrics': metrics
+            }
+
+            all_results.append(result)
+
+        # Zapis wszystkich wyników do jednego pliku JSON
+        with open('dbscan_shuttle_results.json', 'w') as f:
+            json.dump(all_results, f, indent=4)
+
+        print("Results saved to separate JSON files and kmeans_all_results.json")
+
+
+    def run_shuttle_agglomerative_experiment(self):
+        """
+        Run Agglomerative experiment on the Shuttle dataset with varying distance metrics and save results to separate JSON files.
+        :return:
+        """
+        X = self.shuttle_dataset[0]
+        y = np.ravel(self.shuttle_dataset[1])
+
+        print("Evaluating Agglomerative on the Shuttle dataset...")
+
+        # Definiowanie metryk odległości
+        distance_metrics = ["euclidean", "manhattan", "mahalanobis"]
+
+        all_results = []
+
+        for metric in distance_metrics:
+            print(f"Running Agglomerative with metric={metric}...")
+
+            # Tworzenie modelu KMeans z odpowiednią metryką odległości
+            model = AnomalyDetector(model="agglomerative", metric=metric, n_clusters=2)
+            ypred, distances = model.fit_predict(data=X)
+            ypred = AnomalyDetector.transform_labels(ypred)
+            distances = AnomalyDetector.transform_distances(distances)
+
+            # Ocena modelu
+            evaluator = AnomalyDetectorEvaluator(true_labels=y, pred_labels=ypred, scores=distances)
+            metrics = evaluator.calculate_all_metrics()
+
+            print(f"Agglomerative results with metric={metric}")
+            print(metrics)
+            metrics["precision_recall_curve"] = 0
+
+            result = {
+                'metric': metric,
+                'avg_metrics': metrics
+            }
+
+            all_results.append(result)
+
+        # Zapis wszystkich wyników do jednego pliku JSON
+        with open('agglomerative_shuttle_results.json', 'w') as f:
+            json.dump(all_results, f, indent=4)
+
+        print("Results saved to separate JSON files and kmeans_all_results.json")
 
 exps = Experiments()
-exps.run_http_one_class_anomaly_detection()
+exps.run_shuttle_one_class()
+#exps.run_http_dbscan_experiment()
+#exps.run_http_kmeans_experiment()
+#exps.run_http_agglomerative_experiment()
+#exps.run_shuttle_dbscan_experiment()
+#exps.run_shuttle_kmeans_experiment()
+#exps.run_shuttle_agglomerative_experiment()
+
 
 

@@ -1,0 +1,17 @@
+{"avg_metrics":{
+    "accuracy": 0.6355027057818285,
+    "outliers_accuracy": 0.9945884363429223,
+    "precision": 0.4064245810055866,
+    "recall": 0.9945884363429223,
+    "f1": 0.5770470131372387,
+    "precision_recall_curve": null,
+    "auc_pr": null,
+    "positive_recall": 0.9945884363429223,
+    "negative_recall": 0.515807462261464,
+    "positive_precision": 0.4064245810055866,
+    "negative_precision": 0.9965150403521643,
+    "tp_percentage": 0.24864710908573057,
+    "fp_percentage": 0.363144403303902,
+    "fn_percentage": 0.0013528909142694388,
+    "tn_percentage": 0.386855596696098
+}}

@@ -1,0 +1,62 @@
+[
+    {
+        "metric": "euclidean",
+        "avg_metrics": {
+            "accuracy": 0.9959875348799315,
+            "outliers_accuracy": 0.9447450868698376,
+            "precision": 0.9990963855421687,
+            "recall": 0.9447450868698376,
+            "f1": 0.9711608842043624,
+            "precision_recall_curve": 0,
+            "auc_pr": 0.43580268739337014,
+            "positive_recall": 0.9447450868698376,
+            "negative_recall": 0.9999341903215899,
+            "positive_precision": 0.9990963855421687,
+            "negative_precision": 0.9957620639185617,
+            "tp_percentage": 0.06756013605719291,
+            "fp_percentage": 6.110352974723507e-05,
+            "fn_percentage": 0.003951361590321201,
+            "tn_percentage": 0.9284273988227386
+        }
+    },
+    {
+        "metric": "manhattan",
+        "avg_metrics": {
+            "accuracy": 0.9959875348799315,
+            "outliers_accuracy": 0.9447450868698376,
+            "precision": 0.9990963855421687,
+            "recall": 0.9447450868698376,
+            "f1": 0.9711608842043624,
+            "precision_recall_curve": 0,
+            "auc_pr": 0.530860020403614,
+            "positive_recall": 0.9447450868698376,
+            "negative_recall": 0.9999341903215899,
+            "positive_precision": 0.9990963855421687,
+            "negative_precision": 0.9957620639185617,
+            "tp_percentage": 0.06756013605719291,
+            "fp_percentage": 6.110352974723507e-05,
+            "fn_percentage": 0.003951361590321201,
+            "tn_percentage": 0.9284273988227386
+        }
+    },
+    {
+        "metric": "mahalanobis",
+        "avg_metrics": {
+            "accuracy": 0.9959875348799315,
+            "outliers_accuracy": 0.9447450868698376,
+            "precision": 0.9990963855421687,
+            "recall": 0.9447450868698376,
+            "f1": 0.9711608842043624,
+            "precision_recall_curve": 0,
+            "auc_pr": 0.4297566379439553,
+            "positive_recall": 0.9447450868698376,
+            "negative_recall": 0.9999341903215899,
+            "positive_precision": 0.9990963855421687,
+            "negative_precision": 0.9957620639185617,
+            "tp_percentage": 0.06756013605719291,
+            "fp_percentage": 6.110352974723507e-05,
+            "fn_percentage": 0.003951361590321201,
+            "tn_percentage": 0.9284273988227386
+        }
+    }
+]

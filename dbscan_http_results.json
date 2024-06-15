@@ -1,0 +1,42 @@
+[
+    {
+        "metric": "euclidean",
+        "avg_metrics": {
+            "accuracy": 0.9936158259418785,
+            "outliers_accuracy": 1.0,
+            "precision": 0.8549883990719258,
+            "recall": 1.0,
+            "f1": 0.9218261413383365,
+            "precision_recall_curve": 0,
+            "auc_pr": 0.0351111493155017,
+            "positive_recall": 1.0,
+            "negative_recall": 0.9933661194452307,
+            "positive_precision": 0.8549883990719258,
+            "negative_precision": 1.0,
+            "tp_percentage": 0.03764109024668449,
+            "fp_percentage": 0.006384174058121521,
+            "fn_percentage": 0.0,
+            "tn_percentage": 0.955974735695194
+        }
+    },
+    {
+        "metric": "manhattan",
+        "avg_metrics": {
+            "accuracy": 0.9936158259418785,
+            "outliers_accuracy": 1.0,
+            "precision": 0.8549883990719258,
+            "recall": 1.0,
+            "f1": 0.9218261413383365,
+            "precision_recall_curve": 0,
+            "auc_pr": 0.0351111493155017,
+            "positive_recall": 1.0,
+            "negative_recall": 0.9933661194452307,
+            "positive_precision": 0.8549883990719258,
+            "negative_precision": 1.0,
+            "tp_percentage": 0.03764109024668449,
+            "fp_percentage": 0.006384174058121521,
+            "fn_percentage": 0.0,
+            "tn_percentage": 0.955974735695194
+        }
+    }
+]
