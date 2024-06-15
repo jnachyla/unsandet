@@ -95,6 +95,4 @@ def test_subsample_majority_class():
     assert resampled_counts == expected_y_counts, f"Expected class counts {expected_y_counts}, got {resampled_counts}."
 
 
-# Run the test
-test_subsample_majority_class()
-test()
+
