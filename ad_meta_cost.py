@@ -8,7 +8,6 @@ from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import resample
 
-
 class AnomalyDetector:
     def __init__(
             self,
@@ -122,8 +121,26 @@ class AnomalyDetector:
 
 
 class MetaCost:
-    def __init__(self, base_detector: AnomalyDetector, cost_matrix: np.ndarray, m: int, n: int, p: bool = False,
-                 q: bool = True):
+    def __init__(self, base_detector: AnomalyDetector, cost_matrix: np.ndarray, m: int, n: int, p: bool = False, q: bool = True):
+        """
+        Inicjalizuje instancję klasy MetaCost.
+
+        Parametry:
+        base_detector: AnomalyDetector
+            Obiekt klasy AnomalyDetector, który będzie używany jako podstawowy model detekcji anomalii.
+        cost_matrix: np.ndarray
+            Macierz kosztów, która określa koszty błędnej klasyfikacji między różnymi klasami.
+        m: int
+            Liczba resamplowanych próbek, które mają być wygenerowane.
+        n: int
+            Liczba przykładów w każdej resamplowanej próbce.
+        p: bool (domyślnie False)
+            Jeżeli `True`, algorytm klasyfikacyjny zwraca prawdopodobieństwa klas.
+            Jeżeli `False`, zakłada, że przypisanie do klasy jest binarne (1 dla przypisanej klasy, 0 dla innych).
+        q: bool (domyślnie True)
+            Jeżeli `True`, wszystkie resample (próbki) są używane do obliczania prawdopodobieństw dla każdego przykładu.
+            Jeżeli `False`, uwzględniane są tylko te modele, które zawierają punkt x w swoich próbkach.
+        """
         self.base_detector = base_detector
         self.cost_matrix = cost_matrix
         self.m = m
@@ -131,32 +148,33 @@ class MetaCost:
         self.p = p
         self.q = q
 
-    def fit(self, data):
+    def fit_predict(self, data):
         self.base_detector.fit(data)
         self.models = []
         self.samples = []
 
         for _ in range(self.m):
             sample = resample(data, n_samples=self.n)
-            model = AnomalyDetector(model=self.base_detector.model_name, metric=self.base_detector.metric,
-                                    n_clusters=self.base_detector.n_clusters)
+            model = AnomalyDetector(model=self.base_detector.model_name, metric=self.base_detector.metric, n_clusters=self.base_detector.n_clusters)
             model.fit(sample)
             self.models.append(model)
             self.samples.append(sample)
 
         probabilities = self._calculate_probabilities(data)
-        self.assigned_clusters = self._assign_clusters(data, probabilities)
+        assigned_clusters = self._assign_clusters(data, probabilities)
 
-        self.base_detector.fit(data)
-        self.base_detector.model.fit(data, self.assigned_clusters)
+        final_model = AnomalyDetector(model=self.base_detector.model_name, metric=self.base_detector.metric, n_clusters=self.base_detector.n_clusters)
+        final_model.fit(data)
+        final_model.model.fit(data, assigned_clusters)
+
+        return assigned_clusters
 
     def _calculate_probabilities(self, data):
         n_samples, n_clusters = data.shape[0], self.base_detector.n_clusters
         probabilities = np.zeros((n_samples, n_clusters))
 
         for j, x in enumerate(data):
-            relevant_models = range(len(self.models)) if self.q else [i for i in range(len(self.models)) if
-                                                                      x not in self.samples[i]]
+            relevant_models = range(len(self.models)) if self.q else [i for i in range(len(self.models)) if x not in self.samples[i]]
             for i in relevant_models:
                 model = self.models[i]
                 if self.p:
