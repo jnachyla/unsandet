@@ -251,7 +251,7 @@ class Experiments:
             all_results.append(result)
 
         # Zapis wyników do pliku JSON
-        with open('metacost_shutle_results.json', 'w') as f:
+        with open('metacost_shuttle_results.json', 'w') as f:
             json.dump(all_results, f, indent=4)
 
         print("Results saved to meta_cost_results.json")
