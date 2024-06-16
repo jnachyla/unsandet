@@ -21,16 +21,15 @@ def process_files(directory, pdataset = "http"):
             if dataset != pdataset:
                 continue
 
-            # Dla isolation forest i svm nie ma metryk odległości
-            if model in ["isolationforest", "oneclasssvm"]:
-                metric = "N/A"
-            else:
-                metric = parts[2].split('.')[0]
+
 
             file_path = os.path.join(directory, file_name)
             metrics_data = load_metrics_from_json(file_path)
 
+
+
             if isinstance(metrics_data, dict):  # Dla isolation forest i svm
+                metric = "N/A"
                 avg_metrics = metrics_data['avg_metrics']
                 result = {
                     'model': model,
@@ -49,6 +48,7 @@ def process_files(directory, pdataset = "http"):
                 results.append(result)
             else:  # Dla pozostałych modeli
                 for entry in metrics_data:
+                    metric = entry['metric']
                     avg_metrics = entry['avg_metrics']
                     result = {
                         'model': model,
