@@ -280,13 +280,8 @@ class MetaCost:
 
         probabilities = self._calculate_probabilities(data)
 
-
-
-
         print("Assigning clusters...")
         assigned_clusters = self._assign_clusters(data, probabilities)
-
-
 
         final_model = KMeans(n_clusters=self.base_detector.n_clusters)
         final_model.fit(data)

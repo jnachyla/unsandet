@@ -5,6 +5,7 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
+import ad_meta_cost
 from anomaly_detector import AnomalyDetector
 import data_prep
 from ad_meta_cost import MetaCost, generate_probability_dependent_cost_matrix, generate_fixed_interval_cost_matrix
@@ -66,7 +67,7 @@ class Experiments:
         print(forest_metrics)
 
         # Save results to JSON
-        with open('isolationforest_http_results.json', 'w') as f:
+        with open('results/isolationforest_http_results.json', 'w') as f:
             json.dump(forest_metrics, f, indent=4)
 
         # One-Class SVM
@@ -82,7 +83,7 @@ class Experiments:
         print(svm_metrics)
 
         # Save results to JSON
-        with open('svm_http_results.json', 'w') as f:
+        with open('results/svm_http_results.json', 'w') as f:
             json.dump(svm_metrics, f, indent=4)
 
         print("Results saved to JSON files")
@@ -94,7 +95,6 @@ class Experiments:
         """
         X, y = self.shuttle_dataset
 
-        (X, y) = subsample_majority_class(X, y, fraction=0.4)
         (X, y) = self._scale(X, y)
 
         Xtrain, ytrain, Xtest, ytest = data_prep.split_binary_dataset(X, y, inliers_to_outliers_ratio=3.0)
@@ -113,7 +113,7 @@ class Experiments:
         print(forest_metrics)
 
         # Save results to JSON
-        with open('isolationforest_shuttle_results.json', 'w') as f:
+        with open('results/isolationforest_shuttle_results.json', 'w') as f:
             json.dump(forest_metrics, f, indent=4)
 
         # One-Class SVM
@@ -129,7 +129,7 @@ class Experiments:
         print(svm_metrics)
 
         # Save results to JSON
-        with open('svm_shuttle_results.json', 'w') as f:
+        with open('results/svm_shuttle_results.json', 'w') as f:
             json.dump(svm_metrics, f, indent=4)
 
         print("Results saved to JSON files")
@@ -221,7 +221,7 @@ class Experiments:
         distance_metrics = ["mahalanobis","euclidean", "cityblock"]
         n = 1000
         m = 30
-        N = 5
+        N = 1
 
         all_results = []
 
@@ -233,7 +233,7 @@ class Experiments:
             cost_matrix = np.array([[0, 1],
                                     [cost, 0]])
 
-            detector = AnomalyDetector(n_clusters=2, metric=metric, model_name="kmeans")
+            detector = ad_meta_cost.AnomalyDetector(n_clusters=2, metric=metric, model_name="kmeans")
             avg_metrics = self._evaluate_meta_cost(X, y, cost_matrix_generator="fixed_interval", n=n, m=m, N=N,
                                                    cost_matrix=cost_matrix, detector=detector)
 
@@ -251,7 +251,7 @@ class Experiments:
             all_results.append(result)
 
         # Zapis wyników do pliku JSON
-        with open('metacost_shuttle_results.json', 'w') as f:
+        with open('results/metacost_shuttle_results.json', 'w') as f:
             json.dump(all_results, f, indent=4)
 
         print("Results saved to meta_cost_results.json")
@@ -284,7 +284,7 @@ class Experiments:
             cost_matrix = np.array([[0, 1],
                                     [cost, 0]])
 
-            detector = AnomalyDetector(n_clusters=2, metric=metric, model_name="kmeans")
+            detector = ad_meta_cost.AnomalyDetector(n_clusters=2, metric=metric, model_name="kmeans")
             avg_metrics = self._evaluate_meta_cost(X, y, cost_matrix_generator="fixed_interval", n=n, m=m, N=N,
                                                    cost_matrix=cost_matrix, detector=detector)
 
@@ -302,7 +302,7 @@ class Experiments:
             all_results.append(result)
 
         # Zapis wyników do pliku JSON
-        with open('metacost_http_results.json', 'w') as f:
+        with open('results/metacost_http_results.json', 'w') as f:
             json.dump(all_results, f, indent=4)
 
         print("Results saved to meta_cost_results.json")
@@ -348,7 +348,7 @@ class Experiments:
 
 
         # Zapis wszystkich wyników do jednego pliku JSON
-        with open('kmeans_http_results.json', 'w') as f:
+        with open('results/kmeans_http_results.json', 'w') as f:
             json.dump(all_results, f, indent=4)
 
         print("Results saved to separate JSON files and kmeans_all_results.json")
@@ -395,7 +395,7 @@ class Experiments:
             all_results.append(result)
 
         # Zapis wszystkich wyników do jednego pliku JSON
-        with open('dbscan_http_results.json', 'w') as f:
+        with open('results/dbscan_http_results.json', 'w') as f:
             json.dump(all_results, f, indent=4)
 
         print("Results saved to separate JSON files and kmeans_all_results.json")
@@ -442,7 +442,7 @@ class Experiments:
             all_results.append(result)
 
         # Zapis wszystkich wyników do jednego pliku JSON
-        with open('agglomerative_http_results.json', 'w') as f:
+        with open('results/agglomerative_http_results.json', 'w') as f:
             json.dump(all_results, f, indent=4)
 
         print("Results saved to separate JSON files and kmeans_all_results.json")
@@ -486,7 +486,7 @@ class Experiments:
             all_results.append(result)
 
         # Zapis wszystkich wyników do jednego pliku JSON
-        with open('kmeans_shuttle_results.json', 'w') as f:
+        with open('results/kmeans_shuttle_results.json', 'w') as f:
             json.dump(all_results, f, indent=4)
 
         print("Results saved to separate JSON files and kmeans_all_results.json")
@@ -536,7 +536,7 @@ class Experiments:
             all_results.append(result)
 
         # Zapis wszystkich wyników do jednego pliku JSON
-        with open('dbscan_shuttle_results.json', 'w') as f:
+        with open('results/dbscan_shuttle_results.json', 'w') as f:
             json.dump(all_results, f, indent=4)
 
         print("Results saved to separate JSON files and kmeans_all_results.json")
@@ -582,19 +582,26 @@ class Experiments:
             all_results.append(result)
 
         # Zapis wszystkich wyników do jednego pliku JSON
-        with open('agglomerative_shuttle_results.json', 'w') as f:
+        with open('results/agglomerative_shuttle_results.json', 'w') as f:
             json.dump(all_results, f, indent=4)
 
         print("Results saved to separate JSON files and kmeans_all_results.json")
 
 exps = Experiments()
-exps.run_shuttle_one_class()
-#exps.run_http_dbscan_experiment()
-#exps.run_http_kmeans_experiment()
-#exps.run_http_agglomerative_experiment()
-#exps.run_shuttle_dbscan_experiment()
-#exps.run_shuttle_kmeans_experiment()
-#exps.run_shuttle_agglomerative_experiment()
+
+# exps.run_http_one_class()
+# exps.run_shuttle_one_class()
+#
+# exps.run_http_meta_cost()
+# exps.run_shuttle_meta_cost()
+#
+# exps.run_http_dbscan_experiment()
+# exps.run_http_kmeans_experiment()
+# exps.run_http_agglomerative_experiment()
+#
+# exps.run_shuttle_dbscan_experiment()
+# exps.run_shuttle_kmeans_experiment()
+# exps.run_shuttle_agglomerative_experiment()
 
 
 
