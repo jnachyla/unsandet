@@ -600,7 +600,7 @@ exps = Experiments()
 # exps.run_http_agglomerative_experiment()
 #
 # exps.run_shuttle_dbscan_experiment()
-exps.run_shuttle_kmeans_experiment()
+# exps.run_shuttle_kmeans_experiment()
 # exps.run_shuttle_agglomerative_experiment()
 
 
