@@ -590,17 +590,17 @@ class Experiments:
 exps = Experiments()
 
 # exps.run_http_one_class()
-# exps.run_shuttle_one_class()
+#exps.run_shuttle_one_class()
 #
 # exps.run_http_meta_cost()
 # exps.run_shuttle_meta_cost()
 #
 # exps.run_http_dbscan_experiment()
-# exps.run_http_kmeans_experiment()
+#exps.run_http_kmeans_experiment()
 # exps.run_http_agglomerative_experiment()
 #
 # exps.run_shuttle_dbscan_experiment()
-# exps.run_shuttle_kmeans_experiment()
+exps.run_shuttle_kmeans_experiment()
 # exps.run_shuttle_agglomerative_experiment()
 
 
